@@ -23,7 +23,8 @@ identities, payload/XML/log hashes, Python 3.12 and pythonnet 3.0.5 execution.
 
 **Promote Integration submodule** opens a gitlink-only **dev** PR after validating
 the human-merged wrapper dependency PR and a fresh CLI preflight against that
-actual merge. The deterministic title is **Promote universal WSS run {run_id}**.
+actual merge. The deterministic title matches C#:
+**Promote universal WSS run {run_id} / Integration {short_sha}**.
 Repeated exact requests reuse the existing PR; stale/conflicting/orphan branches
 stop. Humans merge; no auto-merge, release or deployment is performed.
 
