@@ -6,3 +6,8 @@ build/
 dist/
 *.egg-info/
 logs/
+
+# Conformance outputs
+conformance-results/
+*.egg-info/
+dist/
