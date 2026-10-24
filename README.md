@@ -61,3 +61,7 @@ Useful options:
 - The CLI imports `WssConfig` and `StimulationController` from `wss_py_wrapper`.
 - The default DLL path is `external/wss-py-wrapper/Cs_Libraries/`, which is owned by the wrapper repo.
 
+
+## Conformance and automatic dependency promotion
+
+See [.github/PYTHON_AUTOMATION.md](.github/PYTHON_AUTOMATION.md) for canonical tests, CLI coverage, CI checks and dev dependency promotion.

@@ -145,6 +145,11 @@ def _run_interactive_loop(controller: StimulationController) -> None:
         controller.Shutdown()
 
 
+def create_controller(config: WssConfig) -> StimulationController:
+    """Construct the production controller with the resolved CLI configuration."""
+    return StimulationController(config)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv) if argv is not None else sys.argv[1:]
     if "/?" in argv:
@@ -187,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     config.config_path.mkdir(parents=True, exist_ok=True)
     config.log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    controller = StimulationController(config)
+    controller = create_controller(config)
     controller.Initialize()
     print("HFI WSS stimulation controller ready.")
     print(f"Config: {config.config_path}")
