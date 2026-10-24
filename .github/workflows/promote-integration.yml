@@ -37,11 +37,7 @@ jobs:
           app-id: ${{ vars.WSS_GITHUB_APP_ID }}
           private-key: ${{ secrets.WSS_GITHUB_APP_PRIVATE_KEY }}
           owner: cwru-non-academic
-          repositories: |
-            WSSCore
-            Python_WSS_Integration_Lib
-            CLI_Python_WSS_Application
-            ROS_Python_WSS_Application
+          repositories: ${{ fromJSON(inputs.approval_json).schema == 'wss-python-promotion/v2' && 'WSSCore,Python_WSS_Integration_Lib,CLI_Python_WSS_Application,ROS_Python_WSS_Application' || 'WSSCore,Python_WSS_Integration_Lib,CLI_Python_WSS_Application' }}
           permission-contents: read
           permission-actions: read
           permission-pull-requests: read
