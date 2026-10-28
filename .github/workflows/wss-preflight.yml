@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/$120a4adca6717261853972be22b7c6c97636dfacc
+    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@20a4adca6717261853972be22b7c6c97636dfacc
     with:
       role: cli
       mode: candidate
