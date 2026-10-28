@@ -1,5 +1,13 @@
 # Python repository conformance automation
 
+Versioned CLI/ROS fan-out approvals are validated by trusted integration tools.
+The approval/evidence read token includes the ROS repository only for v2 proof;
+legacy v1 requests keep their original three-repository read scope. Existing
+workflow inputs, canonical tests, CLI behavior and
+gitlink-only promotion scope remain unchanged. Dispatch and publication tokens
+remain CLI-only. Any missing existing App installation access must be resolved by
+the repository owner; this workflow does not create grants or credentials.
+
 ## Production path and unchanged cases
 
 CLI validation resolves the exact `external/wss-py-wrapper` gitlink and runs the
