@@ -82,6 +82,13 @@ jobs:
           path: fixture
           token: ${{ github.token }}
           persist-credentials: false
+      - name: Verify CLI transport options before any controller startup
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/wrapper/src" + [IO.Path]::PathSeparator + "$env:GITHUB_WORKSPACE/cli/src"
+          python -m unittest discover -s cli/tests -v
+          if ($LASTEXITCODE -ne 0) { throw 'CLI transport option tests failed.' }
+          Remove-Item Env:PYTHONPATH
       - name: Execute canonical cases through shared production wrapper source
         shell: pwsh
         env:
@@ -199,5 +206,6 @@ jobs:
           if-no-files-found: warn
           path: |
             ${{ runner.temp }}/platform-results/platform.json
+            ${{ runner.temp }}/platform-results/python-smoke.json
             ${{ runner.temp }}/platform-results/platform.trx
             ${{ runner.temp }}/platform-results/wheels/*.whl
