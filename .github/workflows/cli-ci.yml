@@ -181,7 +181,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 40e9f6c91ba824027fe88fe52a77bd52ff40a782
+          ref: 94d78c49a622bd4d15587f869c4cd5ac063c13b8
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
