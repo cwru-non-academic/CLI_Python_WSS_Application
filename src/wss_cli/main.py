@@ -52,6 +52,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-retries", dest="max_retries", type=int, default=5)
     parser.add_argument("--tick", dest="tick", type=int, default=10)
     parser.add_argument("--test", dest="test_mode", action="store_true")
+    parser.add_argument("--transport", choices=("serial", "ble"), default="serial")
+    parser.add_argument("--ble-device-name", help="Exact advertised BLE device name.")
+    parser.add_argument("--ble-device-id", help="Explicit BLE device identifier.")
+    parser.add_argument("--ble-auto", action="store_true", help="Explicitly auto-select a compatible BLE device.")
     return parser
 
 
@@ -150,15 +154,8 @@ def create_controller(config: WssConfig) -> StimulationController:
     return StimulationController(config)
 
 
-def main(argv: list[str] | None = None) -> int:
-    argv = list(argv) if argv is not None else sys.argv[1:]
-    if "/?" in argv:
-        argv = ["--help" if arg == "/?" else arg for arg in argv]
-
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    repo_root = _repo_root()
+def _config_from_args(args: argparse.Namespace, repo_root: Path) -> WssConfig:
+    """Resolve CLI paths and transport options before starting a controller."""
     config_path = (
         Path(args.config).expanduser().resolve()
         if args.config
@@ -179,15 +176,26 @@ def main(argv: list[str] | None = None) -> int:
         config_path=config_path,
         log_path=log_path,
         cs_lib_dir=cs_lib_dir,
+        transport=args.transport,
+        ble_device_name=args.ble_device_name,
+        ble_device_id=args.ble_device_id,
+        ble_auto=args.ble_auto,
+        serial_port=args.serial,
+        test_mode=args.test_mode,
     )
-    if args.serial:
-        config = replace(config, serial_port=args.serial)
     if args.max_retries and args.max_retries > 0:
         config = replace(config, max_setup_tries=args.max_retries)
     if args.tick and args.tick > 0:
         config = replace(config, tick_interval_ms=args.tick)
-    if args.test_mode:
-        config = replace(config, test_mode=True)
+    return config
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(argv) if argv is not None else sys.argv[1:]
+    if "/?" in argv:
+        argv = ["--help" if arg == "/?" else arg for arg in argv]
+    args = _build_parser().parse_args(argv)
+    config = _config_from_args(args, _repo_root())
 
     config.config_path.mkdir(parents=True, exist_ok=True)
     config.log_path.parent.mkdir(parents=True, exist_ok=True)

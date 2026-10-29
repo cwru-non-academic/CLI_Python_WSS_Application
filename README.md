@@ -65,3 +65,12 @@ Useful options:
 ## Conformance and automatic dependency promotion
 
 See [.github/PYTHON_AUTOMATION.md](.github/PYTHON_AUTOMATION.md) for canonical tests, CLI coverage, CI checks and dev dependency promotion.
+# Explicit BLE transport
+
+Use `wss-cli --transport=ble --ble-device-name WSS`,
+`--ble-device-id <identifier>`, or `--ble-auto`. Serial remains the default and
+the existing `--serial`/`--test` options remain available. BLE requires the matching
+packaged platform backend; selecting it initializes/connects only in normal user
+operation. CI checks construction and loading without device I/O. See
+[.github/MACOS_BLE_RECEIVER.md](.github/MACOS_BLE_RECEIVER.md) for the macOS payload
+and reviewed promotion boundary.
