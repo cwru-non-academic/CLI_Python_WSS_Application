@@ -1,63 +1,52 @@
-# HFI WSS CLI
+# Python WSS CLI
 
-This repository is the application/implementation repo for the HFI WSS Python CLI.
-
-The reusable wrapper library lives in the `wss-py-wrapper` repository and is consumed here as a git submodule at `external/wss-py-wrapper/`.
-
-## Repository Layout
-
-- `src/wss_cli/`: app-owned CLI entry point
-- `Config/`: app-owned runtime configuration JSON files
-- `external/wss-py-wrapper/`: reusable wrapper library submodule
+An interactive console for WSS configuration, status, and stimulation commands, using the [Python integration library](https://github.com/cwru-non-academic/Python_WSS_Integration_Lib#readme). For shared concepts and configuration, see the [WSS documentation hub](https://cwru-non-academic.github.io/WSS_Documentation/).
 
 ## Setup
 
-Clone the app repo and initialize the wrapper submodule:
+You need Git, Python 3.9+, and a compatible .NET runtime with the same architecture as Python. Keep the complete bundled DLL/native backend payload in the submodule. See the library README for runtime selection; on macOS/Linux set `PYTHONNET_RUNTIME=coreclr` before launch.
 
 ```bash
-git clone --recursive git@github.com:cwru-non-academic/HFI_WSS_Python_Implementation_CLI.git
-cd HFI_WSS_Python_Implementation_CLI
-```
-
-Create a virtual environment and install the app repo:
-
-```bash
+git clone https://github.com/cwru-non-academic/CLI_Python_WSS_Application.git
+cd CLI_Python_WSS_Application
+git -c 'url.https://github.com/.insteadOf=git@github.com:' submodule update --init --recursive
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -U pip
 python -m pip install -e external/wss-py-wrapper
 python -m pip install -e .
 ```
 
-The CLI can also import the wrapper directly from the checked-out submodule during editable app development, but installing the wrapper repo explicitly is the cleaner setup.
+The submodule command uses HTTPS for the SSH-style URLs stored in older submodule entries; it needs no global Git configuration change.
 
-## Runtime Assets
+On Windows, use `py -m venv .venv` and `.\.venv\Scripts\Activate.ps1` instead of the two environment commands above. For an existing checkout, run `git submodule sync --recursive` and the same HTTPS submodule update command before installing.
 
-- App-owned config location: `Config/` in this app repo
-- Wrapper-owned DLL location: `external/wss-py-wrapper/Cs_Libraries/`
-
-The CLI now constructs `WssConfig` explicitly from app-repo paths instead of relying on the old combined-repo current-working-directory layout.
-
-## Run
+## First run without hardware
 
 ```bash
 wss-cli --help
-wss-cli
 wss-cli --test
 ```
 
-Useful options:
+At the prompt, enter `status` to inspect readiness, `help` for commands, and `quit` to shut down. `--test` selects simulated transport and does not open a serial/BLE connection. Allow setup to complete before issuing commands.
 
-- `--config PATH` override the config directory
-- `--cs-libs PATH` override the DLL directory
-- `--log-file PATH` override the log file path
-- `--serial NAME` set the serial device
-- `--max-retries N` set setup retries
-- `--tick MS` set the tick interval
-- `--test` use simulated transport
+The app uses `Config/` for `stimConfig.json`, `stimParams.json`, and `modelConfig.json`; logs go to `logs/`. These paths are relative to the application checkout, not your shell's current directory.
 
-## Notes
+## Run with a device
 
-- The CLI imports `WssConfig` and `StimulationController` from `wss_py_wrapper`.
-- The default DLL path is `external/wss-py-wrapper/Cs_Libraries/`, which is owned by the wrapper repo.
+Review your app-owned configuration against the [configuration reference](https://cwru-non-academic.github.io/WSS_Documentation/apiDocs/conceptual/config-files-reference.html) first. Start serial explicitly, for example:
 
+```bash
+wss-cli --serial COM5
+```
+
+Replace `COM5` with your device, such as `/dev/ttyACM0` on Linux. To use BLE on Windows, Linux, or macOS:
+
+```bash
+wss-cli --transport ble --ble-device-name WSS
+```
+
+Use your device's exact advertised name, or `--ble-device-id` for its identifier. `--ble-auto` explicitly permits automatic selection. Keep `--test` separate from physical-transport options.
+
+Useful overrides are `--config PATH`, `--cs-libs PATH`, `--log-file PATH`, `--max-retries N`, and `--tick MS`. Run `wss-cli --help` for the complete option list. The interactive `start`, `stop`, `stim`, and `analog` commands control output; `quit` stops stimulation and shuts down the controller.
+
+To build your own Python application, start with the [library setup and simulated example](https://github.com/cwru-non-academic/Python_WSS_Integration_Lib#readme). For topic-based control, see the [ROS application](https://github.com/cwru-non-academic/ROS_Python_WSS_Application#readme).
