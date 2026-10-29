@@ -99,3 +99,30 @@ packaged platform backend; selecting it initializes/connects only in normal user
 operation. CI checks construction and loading without device I/O. See
 [.github/MACOS_BLE_RECEIVER.md](.github/MACOS_BLE_RECEIVER.md) for the macOS payload
 and reviewed promotion boundary.
+
+## Device addresses and setup diagnostics
+
+`Config/stimConfig.json` exposes Core's receiver-address settings:
+`broadcastTarget` defaults to `"0x8F"`, and `wssTargets` defaults to
+`["0x81", "0x82", "0x83"]` for logical Wss1, Wss2 and Wss3. These are receiver
+addresses, not the host sender byte. Set the targets for your actual device
+configuration (for example, an installation may need `"0x80"` for Wss1).
+Existing configurations without these fields use Core's historical defaults;
+these template changes do not rewrite existing user configuration. Core keeps
+its existing normalization behavior for invalid address values.
+Keep the firmware and calibration values appropriate to your hardware.
+
+After changing receiver addresses, stop and restart the application so Core
+constructs a new address map. The CLI `reload-core` command does not rebuild that map.
+Setup continues asynchronously after controller initialization. An initialized
+application or an advancing tick loop does not establish that a device is ready.
+Core setup and tick errors are recorded in the configured log file; check the
+reported absolute config and log paths when diagnosing connection failures.
+
+The default config path is relative to the application's source layout, not the
+current terminal directory. For a wheel installed outside an editable checkout,
+pass `--config /path/to/your/Config` and `--cs-libs /path/to/Cs_Libraries`
+explicitly: the wheel does not package the app-owned calibration/config files.
+Startup prints these resolved paths before initialization and warns if
+`stimConfig.json` is missing; Core may then create defaults, which are not a
+substitute for your installation's calibrated configuration.
