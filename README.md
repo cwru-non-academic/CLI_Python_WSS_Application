@@ -54,7 +54,32 @@ Useful options:
 - `--serial NAME` set the serial device
 - `--max-retries N` set setup retries
 - `--tick MS` set the tick interval
-- `--test` use simulated transport
+- `--transport serial|ble|test|conformance` selects the transport (case-insensitive)
+- `--test` is an alias for `--transport=test`
+- `--conformance` is an alias for `--transport=conformance`; it runs Core's initialization and direct-analog validators once, then exits with status 0 on success or 1 on failure
+- `--serial-smoke` constructs and disposes the production serial transport with an explicit diagnostic port, without opening it
+- `--ble-device-name NAME`, `--ble-device-id ID`, or `--ble-auto` explicitly selects a BLE target when using `--transport=ble`
+
+Serial remains the default. BLE selectors cannot be combined with serial, test or
+conformance options. Conformance creates a temporary calibration/configuration
+fixture from shared Core scenarios; it does not edit the supplied `--config`
+directory. Test mode keeps the interactive console running with Core's simulated
+transport. Retry and tick defaults remain 5 and 10 ms, matching the C# CLI.
+
+On macOS, select CoreCLR before starting the installed application, for example:
+
+```bash
+PYTHONNET_RUNTIME=coreclr wss-cli --transport=ble --ble-device-name WSS
+```
+
+The payload must include `backends/macos/WSS.Transport.BLE.MacOS.dll` and its
+paired `libwss_macos_ble.dylib`. The existing wrapper loads this backend through
+Core's transport factory and rejects missing files. Platform CI checks real
+constructor/loading paths for all selectors on Windows, Ubuntu and macOS,
+including BLE name/ID/auto selection. These checks do not scan for a device,
+connect, or validate physical stimulation. Default serial auto-selection still
+requires a real serial port inventory; the safe construction check uses an
+explicit diagnostic port.
 
 ## Notes
 
