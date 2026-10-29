@@ -86,7 +86,7 @@ def _print_command_help() -> None:
     print("  quit|exit           Terminate the program.")
 
 
-def _run_interactive_loop(controller: StimulationController) -> None:
+def _run_interactive_loop(controller: StimulationController, config: WssConfig | None = None) -> None:
     running = True
 
     try:
@@ -118,6 +118,8 @@ def _run_interactive_loop(controller: StimulationController) -> None:
                         f"Ready={controller.Ready()}, Started={controller.Started()}, "
                         f"ModeValid={controller.isModeValid()}, BasicSupported={controller.BasicSupported}"
                     )
+                    if config is not None:
+                        print(f"Config: {config.config_path}; Core setup/tick log: {config.log_path}")
                 elif cmd == "reload-core":
                     controller.LoadCoreConfigFile()
                     print("Core config reloaded.")
@@ -244,16 +246,18 @@ def _run_configured(config: WssConfig) -> int:
     config.config_path.mkdir(parents=True, exist_ok=True)
     config.log_path.parent.mkdir(parents=True, exist_ok=True)
 
+    print(f"Config: {config.config_path}")
+    print(f"Log file: {config.log_path}")
+    print(f"DLLs: {config.cs_lib_dir}")
+    if not (config.config_path / "stimConfig.json").is_file():
+        print("Warning: stimConfig.json is missing; Core may create defaults. Check --config and your device/calibration settings.", file=sys.stderr)
     controller = create_controller(config)
     try:
         controller.Initialize()
     except BaseException:
         controller.Shutdown()
         raise
-    print("HFI WSS stimulation controller ready.")
-    print(f"Config: {config.config_path}")
-    print(f"Log file: {config.log_path}")
-    print(f"DLLs: {config.cs_lib_dir}")
+    print("HFI WSS controller initialized; device setup continues asynchronously.")
     if config.test_mode:
         print("Transport: test")
     elif config.transport == "ble":
@@ -264,7 +268,7 @@ def _run_configured(config: WssConfig) -> int:
         f"Mode valid: {controller.isModeValid()}, Ready: {controller.Ready()}, Basic API: {controller.BasicSupported}"
     )
     _print_command_help()
-    _run_interactive_loop(controller)
+    _run_interactive_loop(controller, config)
     return 0
 
 
