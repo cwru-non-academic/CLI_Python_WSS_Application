@@ -198,6 +198,9 @@ jobs:
           }
           if ($env:CLI_SHA) { $options.CliRoot = "$env:GITHUB_WORKSPACE/cli"; $options.CliSha = $env:CLI_SHA }
           ./tools/.github/scripts/Invoke-PlatformCompatibility.ps1 @options
+          if (!$?) { throw 'Shared Python platform compatibility failed.' }
+          python ./cli/conformance/transport_smoke.py --payload "$env:RUNNER_TEMP/platform-results/installed/Cs_Libraries" --output "$env:RUNNER_TEMP/platform-results/transport-options.json"
+          if ($LASTEXITCODE -ne 0) { throw 'CLI production transport selection failed.' }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -207,5 +210,6 @@ jobs:
           path: |
             ${{ runner.temp }}/platform-results/platform.json
             ${{ runner.temp }}/platform-results/python-smoke.json
+            ${{ runner.temp }}/platform-results/transport-options.json
             ${{ runner.temp }}/platform-results/platform.trx
             ${{ runner.temp }}/platform-results/wheels/*.whl
