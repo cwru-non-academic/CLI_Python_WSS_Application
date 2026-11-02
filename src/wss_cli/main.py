@@ -7,6 +7,7 @@ import sys
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 def _repo_root() -> Path:
@@ -51,8 +52,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--max-retries", dest="max_retries", type=int, default=5)
     parser.add_argument("--tick", dest="tick", type=int, default=10)
-    parser.add_argument("--test", dest="test_mode", action="store_true")
-    parser.add_argument("--transport", choices=("serial", "ble"), default="serial")
+    diagnostics = parser.add_mutually_exclusive_group()
+    diagnostics.add_argument("--test", dest="test_mode", action="store_true", help="Use Core's simulated test transport.")
+    diagnostics.add_argument("--conformance", dest="conformance_mode", action="store_true", help="Run shared Core conformance once using an isolated in-memory fixture.")
+    parser.add_argument("--transport", type=str.lower, choices=("serial", "ble", "test", "conformance"), default="serial")
+    parser.add_argument("--serial-smoke", action="store_true", help="Construct and dispose the production serial transport without opening a port.")
     parser.add_argument("--ble-device-name", help="Exact advertised BLE device name.")
     parser.add_argument("--ble-device-id", help="Explicit BLE device identifier.")
     parser.add_argument("--ble-auto", action="store_true", help="Explicitly auto-select a compatible BLE device.")
@@ -82,7 +86,7 @@ def _print_command_help() -> None:
     print("  quit|exit           Terminate the program.")
 
 
-def _run_interactive_loop(controller: StimulationController) -> None:
+def _run_interactive_loop(controller: StimulationController, config: WssConfig | None = None) -> None:
     running = True
 
     try:
@@ -114,6 +118,8 @@ def _run_interactive_loop(controller: StimulationController) -> None:
                         f"Ready={controller.Ready()}, Started={controller.Started()}, "
                         f"ModeValid={controller.isModeValid()}, BasicSupported={controller.BasicSupported}"
                     )
+                    if config is not None:
+                        print(f"Config: {config.config_path}; Core setup/tick log: {config.log_path}")
                 elif cmd == "reload-core":
                     controller.LoadCoreConfigFile()
                     print("Core config reloaded.")
@@ -176,12 +182,13 @@ def _config_from_args(args: argparse.Namespace, repo_root: Path) -> WssConfig:
         config_path=config_path,
         log_path=log_path,
         cs_lib_dir=cs_lib_dir,
-        transport=args.transport,
-        ble_device_name=args.ble_device_name,
-        ble_device_id=args.ble_device_id,
+        transport="ble" if args.transport == "ble" else "serial",
+        ble_device_name=args.ble_device_name if args.ble_device_name and args.ble_device_name.strip() else None,
+        ble_device_id=args.ble_device_id if args.ble_device_id and args.ble_device_id.strip() else None,
         ble_auto=args.ble_auto,
-        serial_port=args.serial,
-        test_mode=args.test_mode,
+        serial_port=args.serial if args.serial and args.serial.strip() else None,
+        test_mode=args.test_mode or args.transport == "test",
+        conformance_mode=args.conformance_mode or args.transport == "conformance",
     )
     if args.max_retries and args.max_retries > 0:
         config = replace(config, max_setup_tries=args.max_retries)
@@ -195,23 +202,73 @@ def main(argv: list[str] | None = None) -> int:
     if "/?" in argv:
         argv = ["--help" if arg == "/?" else arg for arg in argv]
     args = _build_parser().parse_args(argv)
-    config = _config_from_args(args, _repo_root())
+    try:
+        if args.serial_smoke:
+            # Match the C# diagnostic: no Initialize/Open/discovery/stimulation.
+            args.transport = "serial"
+            args.serial = "COM1" if sys.platform == "win32" else "/dev/ttyWssSmoke"
+            args.ble_auto = args.test_mode = args.conformance_mode = False
+            args.ble_device_name = args.ble_device_id = None
+            config = _config_from_args(args, _repo_root())
+            controller = create_controller(config)
+            transport = None
+            try:
+                controller._load_dotnet()
+                transport = controller._create_transport()
+            finally:
+                if transport is not None:
+                    transport.Dispose()
+                controller.Shutdown()
+            print("Serial transport constructed and disposed successfully.")
+            return 0
+        config = _config_from_args(args, _repo_root())
+        if config.conformance_mode:
+            from .diagnostics import create_conformance_config, run_conformance
+
+            with TemporaryDirectory(prefix="wss-cli-conformance-") as directory:
+                config = replace(config, config_path=Path(directory))
+                create_conformance_config(config.cs_lib_dir, config.config_path)
+                config.log_path.parent.mkdir(parents=True, exist_ok=True)
+                controller = create_controller(config)
+                try:
+                    controller.Initialize()
+                    return run_conformance(controller)
+                finally:
+                    controller.Shutdown()
+        return _run_configured(config)
+    except Exception as exc:
+        print(f"Startup failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run_configured(config: WssConfig) -> int:
 
     config.config_path.mkdir(parents=True, exist_ok=True)
     config.log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    controller = create_controller(config)
-    controller.Initialize()
-    print("HFI WSS stimulation controller ready.")
     print(f"Config: {config.config_path}")
     print(f"Log file: {config.log_path}")
     print(f"DLLs: {config.cs_lib_dir}")
-    print(f"Serial: {config.serial_port or 'auto-detect'}")
+    if not (config.config_path / "stimConfig.json").is_file():
+        print("Warning: stimConfig.json is missing; Core may create defaults. Check --config and your device/calibration settings.", file=sys.stderr)
+    controller = create_controller(config)
+    try:
+        controller.Initialize()
+    except BaseException:
+        controller.Shutdown()
+        raise
+    print("HFI WSS controller initialized; device setup continues asynchronously.")
+    if config.test_mode:
+        print("Transport: test")
+    elif config.transport == "ble":
+        print(f"Transport: ble ({config.ble_device_id or config.ble_device_name or 'auto-select'})")
+    else:
+        print(f"Transport: serial ({config.serial_port or 'auto-detect'})")
     print(
         f"Mode valid: {controller.isModeValid()}, Ready: {controller.Ready()}, Basic API: {controller.BasicSupported}"
     )
     _print_command_help()
-    _run_interactive_loop(controller)
+    _run_interactive_loop(controller, config)
     return 0
 
 
