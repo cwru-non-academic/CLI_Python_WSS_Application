@@ -126,3 +126,9 @@ explicitly: the wheel does not package the app-owned calibration/config files.
 Startup prints these resolved paths before initialization and warns if
 `stimConfig.json` is missing; Core may then create defaults, which are not a
 substitute for your installation's calibrated configuration.
+
+When the retained dependency payload is legacy and does not declare macOS BLE,
+the platform probe asserts that explicit BLE selection is rejected and reports
+it as unsupported. It does not count that as BLE construction or runtime proof.
+A declared macOS backend missing either its managed DLL or native bridge always
+fails; file absence alone never establishes legacy capability.
