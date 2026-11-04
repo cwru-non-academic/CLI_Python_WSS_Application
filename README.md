@@ -229,7 +229,6 @@ configuration and Git submodule entries.
 | `733d661baf2d259688fe0623bba0ae9adc1ce9ad` | Historical shared receiver validator pin copied from the former receiver guide. It predates the aligned workflow above and is retained here pending the documentation SHA decision; it is not the current checkout instruction. |
 | `02172a64c55becd5535204f46f10b4755bf3ee05` | C# canonical fixture commit in [python-ci.json](.github/python-ci.json); fixes the exact test source used by Python conformance. Its separate `fixture_sha256` is a content checksum, not a Git commit. |
 | `94d78c49a622bd4d15587f869c4cd5ac063c13b8` | Historical shared platform tooling revision, superseded by the paired native macOS tooling below; retained pending the documentation SHA decision. |
-
 | `2cabda85d2018483681f38cb03d674bbc13b05bd` | Paired native Intel/Apple Silicon macOS platform and receipt tooling; independent of the runtime wrapper gitlink. |
 
 The runtime wrapper revision is recorded by the
