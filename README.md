@@ -145,6 +145,8 @@ The acceptance checks are:
 - `CLI platform compatibility (Ubuntu)`
 - `CLI platform compatibility (macOS)`
 
+The macOS check aggregates native Intel (x64) and Apple Silicon (arm64) jobs. Both must pass; their separate job names and evidence identify which architecture failed. These checks validate packaged backend loading, without a physical BLE connection.
+
 Platform jobs build and install both wheels, exercise argument/configuration
 routing into production transport construction, and check payload propagation
 and managed backend selection. A declared macOS BLE payload also requires native
@@ -222,11 +224,13 @@ configuration and Git submodule entries.
 | Reference | Purpose and source |
 | --- | --- |
 | `be8546ca46256696bb366925b0094023d7cefc2c` | WSSCore #28 contract/verifier checked out by the receipt workflow; defines the nine-target acceptance contract. |
-| `88bca887cdd015ed439ce71edec9d022ffae460c` | Python receipt tools checked out by the aligned receipt workflow; fixes the executable validator revision independently of the application's runtime dependency. |
+| `88bca887cdd015ed439ce71edec9d022ffae460c` | Historical aligned receipt tooling pin, superseded by the paired native macOS tooling below; retained pending the documentation SHA decision. |
 | `de631fe4f1b80b5b4e2c6691f444625ef1730499` | Historical WSSCore #18 seven-target verifier documented on main/dev before tooling alignment. Retained pending the documentation SHA decision; superseded by #28 and not the current checkout instruction. |
 | `733d661baf2d259688fe0623bba0ae9adc1ce9ad` | Historical shared receiver validator pin copied from the former receiver guide. It predates the aligned workflow above and is retained here pending the documentation SHA decision; it is not the current checkout instruction. |
 | `02172a64c55becd5535204f46f10b4755bf3ee05` | C# canonical fixture commit in [python-ci.json](.github/python-ci.json); fixes the exact test source used by Python conformance. Its separate `fixture_sha256` is a content checksum, not a Git commit. |
-| `94d78c49a622bd4d15587f869c4cd5ac063c13b8` | Shared platform compatibility tooling revision in [cli-ci.yml](.github/workflows/cli-ci.yml); kept independent of the runtime wrapper gitlink. |
+| `94d78c49a622bd4d15587f869c4cd5ac063c13b8` | Historical shared platform tooling revision, superseded by the paired native macOS tooling below; retained pending the documentation SHA decision. |
+
+| `2cabda85d2018483681f38cb03d674bbc13b05bd` | Paired native Intel/Apple Silicon macOS platform and receipt tooling; independent of the runtime wrapper gitlink. |
 
 The runtime wrapper revision is recorded by the
 `external/wss-py-wrapper` Git submodule entry. Candidate source revisions, producer
