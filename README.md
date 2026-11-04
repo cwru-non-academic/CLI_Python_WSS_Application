@@ -214,28 +214,22 @@ changed/no-op state, exact checks, non-human or wrong-source merges,
 latest-failed normal CI and disallowed transport writes. Full acceptance still
 requires a real frozen plan, reviewed dependency merges and postmerge CI.
 
-<details>
-<summary>Maintainer reference: exact revisions and why they exist</summary>
+### Verification references
 
-These references identify tooling or test inputs for reproducible validation;
-they are not setup values users need to copy. Operational pins stay in workflows,
-configuration and Git submodule entries.
+The central [verification pin reference](https://github.com/cwru-non-academic/WSS_Documentation/blob/dev/apiDocs/conceptual/verification-pin-reference.md)
+explains the fixture and receiver identities as a dated inspection snapshot. It
+is maintained on the documentation repository's dev branch; it is not a list of
+currently deployed pins. Application setup does not require copying these values.
 
-| Reference | Purpose and source |
-| --- | --- |
-| `be8546ca46256696bb366925b0094023d7cefc2c` | WSSCore #28 contract/verifier checked out by the receipt workflow; defines the nine-target acceptance contract. |
-| `88bca887cdd015ed439ce71edec9d022ffae460c` | Historical aligned receipt tooling pin, superseded by the paired native macOS tooling below; retained pending the documentation SHA decision. |
-| `de631fe4f1b80b5b4e2c6691f444625ef1730499` | Historical WSSCore #18 seven-target verifier documented on main/dev before tooling alignment. Retained pending the documentation SHA decision; superseded by #28 and not the current checkout instruction. |
-| `733d661baf2d259688fe0623bba0ae9adc1ce9ad` | Historical shared receiver validator pin copied from the former receiver guide. It predates the aligned workflow above and is retained here pending the documentation SHA decision; it is not the current checkout instruction. |
-| `02172a64c55becd5535204f46f10b4755bf3ee05` | C# canonical fixture commit in [python-ci.json](.github/python-ci.json); fixes the exact test source used by Python conformance. Its separate `fixture_sha256` is a content checksum, not a Git commit. |
-| `94d78c49a622bd4d15587f869c4cd5ac063c13b8` | Historical shared platform tooling revision, superseded by the paired native macOS tooling below; retained pending the documentation SHA decision. |
-| `2cabda85d2018483681f38cb03d674bbc13b05bd` | Paired native Intel/Apple Silicon macOS platform and receipt tooling; independent of the runtime wrapper gitlink. |
+The reviewed [fixture configuration](.github/python-ci.json),
+[normal CI](.github/workflows/cli-ci.yml),
+[candidate preflight](.github/workflows/wss-preflight.yml) and
+[receipt workflow](.github/workflows/release-receipt.yml) remain authoritative for
+this repository's executable pins. The runtime wrapper revision is recorded by
+the `external/wss-py-wrapper` Git submodule entry. Historical bootstrap and
+diagnostic identities remain in their owning manifests and workflow evidence.
 
-The runtime wrapper revision is recorded by the
-`external/wss-py-wrapper` Git submodule entry. Candidate source revisions, producer
-run/artifact identities, archive hashes and frozen plan IDs bind a receipt to its
-actual inputs and prevent a moving branch or unrelated successful CI run from
-being substituted. The promotion title's `{short_sha}` identifies the accepted
-integration revision for reviewers.
-
-</details>
+Candidate revisions, producer run/artifact identities, archive hashes and frozen
+plan IDs bind acceptance to its actual inputs. A moving branch or unrelated
+successful CI run cannot replace those inputs. The promotion title's
+`{short_sha}` identifies the accepted integration revision for reviewers.
