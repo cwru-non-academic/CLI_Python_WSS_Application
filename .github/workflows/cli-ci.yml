@@ -182,7 +182,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 9b37f97a67b57b84f07aeddb6caf42ae52f46ab7
+          ref: 4521613359b88e440c022ae0116832eabe353b8a
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
@@ -267,7 +267,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 9b37f97a67b57b84f07aeddb6caf42ae52f46ab7
+          ref: 4521613359b88e440c022ae0116832eabe353b8a
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
@@ -321,7 +321,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 9b37f97a67b57b84f07aeddb6caf42ae52f46ab7
+          ref: 4521613359b88e440c022ae0116832eabe353b8a
           path: tools
           persist-credentials: false
       - uses: actions/download-artifact@v4
