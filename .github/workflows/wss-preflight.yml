@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@4521613359b88e440c022ae0116832eabe353b8a
+    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@27e764c7db02b5fa4550c166a470039b867e2ced
     with:
       role: cli
       mode: candidate
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 4521613359b88e440c022ae0116832eabe353b8a
+          ref: 27e764c7db02b5fa4550c166a470039b867e2ced
           path: tools
           persist-credentials: false
       - uses: actions/download-artifact@v4
