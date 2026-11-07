@@ -79,7 +79,9 @@ foreach($case in $cases){
 # Real entry-point plumbing with synthetic repositories and nonloading children.
 # Synthetic tool functions replace runtime validators/children only. Git authority,
 # tools guards and full .git-inclusive snapshots remain the actual implementations.
-$plumbing=Join-Path $base 'plumbing'
+$physicalTemp=(& python -c 'import os,tempfile; print(os.path.realpath(tempfile.gettempdir()))').Trim()
+if($LASTEXITCODE -ne 0){throw 'Cannot resolve physical temporary directory.'}
+$plumbing=Join-Path $physicalTemp ('cli-baseline-plumbing-'+[Guid]::NewGuid().ToString('N'))
 $null=New-Item -ItemType Directory -Path $plumbing
 function Write-PlumbingFile([string]$Path,[string]$Text){
     $null=New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force
