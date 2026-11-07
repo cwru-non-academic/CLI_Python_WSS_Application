@@ -1,10 +1,10 @@
 # Standalone candidate-source CLI proof
 
 `standalone-selected-runtime.yml` proves one explicit proposed source pair on
-Windows: product CLI source `1f978246b07b033f98ea7306772508a7f0105774`, selected test source
+Windows: product CLI source `989e968903b849b0af307bf519e2daecffa2c74d`, selected test source
 `76680d8c0698f1a028fa214d95bd8dc6d9098bc6`, candidate wrapper source
 `9c375d7d39b7fe212483112effcdcdd5b61cf381`, and guarded tooling
-`dcdef289e4d2d9d54278dd8c22fb3cf76f424c7c`. This is not the
+`af04fa8a6fd7aeb7c6bdc85877b8a27f6292f351`. This is not the
 ordinary product gitlink pair, authenticated Core selection, campaign evidence,
 activation, or all-platform selected coverage. Ordinary native/platform gates
 remain unchanged and required.
@@ -33,3 +33,7 @@ checkout remains independent at its original reviewed commit. A changes no produ
 source or gitlink. The later B commit binds this tuple and is the final hosted proof
 subject; the intermediate A commit is not an acceptance result. Ordinary main still
 uses its own actual committed product/gitlink.
+
+Current A is retained at `ci/tooling/989e968903b849b0af307bf519e2daecffa2c74d`. It is derived directly from
+`1f978246b07b033f98ea7306772508a7f0105774` with only canonical executable tooling
+pin replacements; every non-workflow tracked blob, mode and gitlink is unchanged.
