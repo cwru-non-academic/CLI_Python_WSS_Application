@@ -14,12 +14,13 @@ jobs:
     outputs:
       wrapper: ${{ steps.sources.outputs.wrapper }}
       cli: ${{ steps.sources.outputs.cli }}
-      fixture: ${{ steps.sources.outputs.fixture }}
+      fixture: ${{ steps.profile.outputs.fixture }}
       sdk: ${{ steps.sources.outputs.sdk }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          path: source
       - name: Validate exact source and execution contract
         id: sources
         shell: pwsh
@@ -30,6 +31,7 @@ jobs:
           CLI_SHA: ${{ github.sha }}
         run: |
           $ErrorActionPreference = 'Stop'
+          Set-Location (Join-Path $env:GITHUB_WORKSPACE 'source')
           $config = Get-Content .github/python-ci.json -Raw | ConvertFrom-Json
           if ($config.automated_execution -cne 'pythonnet' -or $config.dotnet_sdk -cne '9.0.316') { throw 'Unexpected automated execution contract.' }
           if ($env:ROLE -cnotin @('wrapper','cli') -or $env:MODE -cnotin @('candidate','committed')) { throw 'Invalid validation role/mode.' }
@@ -44,8 +46,35 @@ jobs:
           if ($ownSha -cne $env:GITHUB_SHA -or $wrapper -cnotmatch '^[0-9a-f]{40}$' -or ($cli -and $cli -cnotmatch '^[0-9a-f]{40}$') -or $config.fixture_commit -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid or raced immutable source.' }
           "wrapper=$wrapper" >> $env:GITHUB_OUTPUT
           "cli=$cli" >> $env:GITHUB_OUTPUT
-          "fixture=$($config.fixture_commit)" >> $env:GITHUB_OUTPUT
+
           "sdk=$($config.dotnet_sdk)" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: 0ecc684b86f7bcda538bae84252511497455d53b
+          path: tools
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: ${{ steps.sources.outputs.wrapper }}
+          path: wrapper
+          persist-credentials: false
+      - name: Resolve fixture from immutable product and reviewed parent tooling
+        id: profile
+        shell: pwsh
+        env:
+          WRAPPER_SHA: ${{ steps.sources.outputs.wrapper }}
+        run: |
+          $app="$env:GITHUB_WORKSPACE/source"
+          $tools="$env:GITHUB_WORKSPACE/tools"
+          . ./source/.github/scripts/Read-OrdinaryPythonTooling.ps1
+          $toolSha=Get-OrdinaryPythonToolsSha $app $env:GITHUB_SHA
+          Assert-OrdinaryPythonToolsCheckout $tools $toolSha
+          . ./tools/.github/scripts/PythonContract.ps1
+          . ./tools/.github/scripts/PythonProfiles/Tooling.ps1
+          $binding=Resolve-PythonOrdinaryTooling -ToolsRoot $tools -ToolsSha $toolSha -ConfigPath "$tools/.github/python-ci.json" -WrapperRoot "$env:GITHUB_WORKSPACE/wrapper" -WrapperSha $env:WRAPPER_SHA
+          "fixture=$($binding.fixture_commit)" >> $env:GITHUB_OUTPUT
   conformance:
     needs: prerequisites
     name: CLI general conformance
@@ -82,11 +111,18 @@ jobs:
           path: fixture
           token: ${{ github.token }}
           persist-credentials: false
+      - name: Check out immutable shared Python ordinary tools
+        uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: 0ecc684b86f7bcda538bae84252511497455d53b
+          path: tools
+          persist-credentials: false
       - name: Verify CLI transport options before any controller startup
         shell: pwsh
         run: |
           $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/wrapper/src" + [IO.Path]::PathSeparator + "$env:GITHUB_WORKSPACE/cli/src"
-          python -m unittest discover -s cli/tests -v
+          python -B -m unittest discover -s cli/tests -v
           if ($LASTEXITCODE -ne 0) { throw 'CLI transport option tests failed.' }
           Remove-Item Env:PYTHONPATH
       - name: Execute canonical cases through shared production wrapper source
@@ -101,7 +137,7 @@ jobs:
             WrapperRoot = "$env:GITHUB_WORKSPACE/wrapper"
             FixtureRoot = "$env:GITHUB_WORKSPACE/fixture"
             WrapperSha = $env:WRAPPER_SHA
-            ConfigPath = "$env:GITHUB_WORKSPACE/wrapper/.github/python-ci.json"
+            ConfigPath = "$env:GITHUB_WORKSPACE/tools/.github/python-ci.json"
             OutputRoot = "$env:RUNNER_TEMP/conformance-results"
             Mode = $env:MODE
             Role = $env:ROLE
@@ -111,7 +147,11 @@ jobs:
             $options.ArtifactRoot = "$env:RUNNER_TEMP/resolved/extracted/WSS-Universal"
             $options.CandidatePath = "$env:RUNNER_TEMP/resolved/candidate.json"
           }
-          ./wrapper/.github/scripts/Invoke-DotNetConformance.ps1 @options
+          . ./cli/.github/scripts/Read-OrdinaryPythonTooling.ps1
+          $options.ToolsRoot="$env:GITHUB_WORKSPACE/tools"
+          $options.ToolsSha=Get-OrdinaryPythonToolsSha "$env:GITHUB_WORKSPACE/cli" $env:CLI_SHA
+          Assert-OrdinaryPythonToolsCheckout $options.ToolsRoot $options.ToolsSha
+          ./tools/.github/scripts/Invoke-DotNetConformance.ps1 @options
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -123,6 +163,9 @@ jobs:
             ${{ runner.temp }}/conformance-results/results.xml
             ${{ runner.temp }}/conformance-results/dotnet.log
             ${{ runner.temp }}/conformance-results/projection.json
+            ${{ runner.temp }}/conformance-results/multi/*.json
+            ${{ runner.temp }}/conformance-results/multi/*.xml
+            ${{ runner.temp }}/conformance-results/multi/*.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -198,9 +241,14 @@ jobs:
             OutputRoot = "$env:RUNNER_TEMP/platform-results"
           }
           if ($env:CLI_SHA) { $options.CliRoot = "$env:GITHUB_WORKSPACE/cli"; $options.CliSha = $env:CLI_SHA }
+          . ./cli/.github/scripts/Read-OrdinaryPythonTooling.ps1
+          $options.ToolsRoot="$env:GITHUB_WORKSPACE/tools"
+          $options.ToolsSha=Get-OrdinaryPythonToolsSha "$env:GITHUB_WORKSPACE/cli" $env:CLI_SHA
+          $options.ConfigPath="$env:GITHUB_WORKSPACE/tools/.github/python-ci.json"
+          Assert-OrdinaryPythonToolsCheckout $options.ToolsRoot $options.ToolsSha
           ./tools/.github/scripts/Invoke-PlatformCompatibility.ps1 @options
           if (!$?) { throw 'Shared Python platform compatibility failed.' }
-          python ./cli/conformance/transport_smoke.py --payload "$env:RUNNER_TEMP/platform-results/installed/Cs_Libraries" --output "$env:RUNNER_TEMP/platform-results/transport-options.json"
+          python -B ./cli/conformance/transport_smoke.py --payload "$env:RUNNER_TEMP/platform-results/installed/Cs_Libraries" --output "$env:RUNNER_TEMP/platform-results/transport-options.json"
           if ($LASTEXITCODE -ne 0) { throw 'CLI production transport selection failed.' }
       - uses: actions/upload-artifact@v4
         if: always()
@@ -283,9 +331,14 @@ jobs:
             OutputRoot = "$env:RUNNER_TEMP/platform-results"
           }
           if ($env:CLI_SHA) { $options.CliRoot = "$env:GITHUB_WORKSPACE/cli"; $options.CliSha = $env:CLI_SHA }
+          . ./cli/.github/scripts/Read-OrdinaryPythonTooling.ps1
+          $options.ToolsRoot="$env:GITHUB_WORKSPACE/tools"
+          $options.ToolsSha=Get-OrdinaryPythonToolsSha "$env:GITHUB_WORKSPACE/cli" $env:CLI_SHA
+          $options.ConfigPath="$env:GITHUB_WORKSPACE/tools/.github/python-ci.json"
+          Assert-OrdinaryPythonToolsCheckout $options.ToolsRoot $options.ToolsSha
           ./tools/.github/scripts/Invoke-PlatformCompatibility.ps1 @options
           if (!$?) { throw 'Shared Python platform compatibility failed.' }
-          python ./cli/conformance/transport_smoke.py --payload "$env:RUNNER_TEMP/platform-results/installed/Cs_Libraries" --output "$env:RUNNER_TEMP/platform-results/transport-options.json"
+          python -B ./cli/conformance/transport_smoke.py --payload "$env:RUNNER_TEMP/platform-results/installed/Cs_Libraries" --output "$env:RUNNER_TEMP/platform-results/transport-options.json"
           if ($LASTEXITCODE -ne 0) { throw 'CLI production transport selection failed.' }
       - name: Record native macOS architecture worker outcome
         if: always()

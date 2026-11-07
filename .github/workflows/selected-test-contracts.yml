@@ -25,3 +25,7 @@ jobs:
       - name: Verify selected suite credential isolation
         shell: pwsh
         run: ./.github/scripts/tests/SelectedProcessIsolation.Tests.ps1
+
+      - name: Verify ordinary immutable tooling pins
+        shell: pwsh
+        run: ./.github/scripts/tests/OrdinaryPythonTooling.Tests.ps1
