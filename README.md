@@ -233,3 +233,22 @@ Candidate revisions, producer run/artifact identities, archive hashes and frozen
 plan IDs bind acceptance to its actual inputs. A moving branch or unrelated
 successful CI run cannot replace those inputs. The promotion title's
 `{short_sha}` identifies the accepted integration revision for reviewers.
+
+## Independent selected command tests
+
+The trusted `.github/scripts/invoke_selected_cli_tests.py` entrypoint runs an
+additional selected test bundle against explicit, unchanged CLI and wrapper
+product roots and the reviewed payload. Core must authenticate the frozen test
+selection first; a well-formed ID alone is not authorization.
+
+Pass `--product-root`, `--product-sha`, `--wrapper-root`, `--wrapper-sha`,
+`--payload-root`, the complete `--test-root`, `--test-sha`, `--test-repository`,
+`--test-selection-id` tuple and a new `--evidence` file outside all input roots.
+The selected checkout provides `conformance/test-contract.json` and named test
+files only. Its product modules and release validators are not imported.
+
+All ten production command cases must run successfully without skips. Source,
+loaded module paths, actual Core assembly location and payload bytes are checked
+before evidence is written. Existing mandatory wrapper, native-platform,
+provenance and release gates remain required. Repository-variable workflow and
+campaign evidence adoption is separate and is not activated by this entrypoint.

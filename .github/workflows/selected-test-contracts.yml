@@ -1,0 +1,31 @@
+name: Selected test source contracts
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-contracts:
+    name: Selected test source contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Reject malformed, mutable and coupled selected sources
+        run: python -B .github/scripts/tests/test_selected_cli_source.py
+      - name: Verify selected suite credential isolation
+        shell: pwsh
+        run: ./.github/scripts/tests/SelectedProcessIsolation.Tests.ps1
+
+      - name: Verify ordinary immutable tooling pins
+        shell: pwsh
+        run: ./.github/scripts/tests/OrdinaryPythonTooling.Tests.ps1
