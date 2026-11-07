@@ -5,7 +5,7 @@ param([Parameter(Mandatory)][string]$Workspace,[Parameter(Mandatory)][string]$Ve
       [Parameter(Mandatory)][string]$ExpectedCandidateHash,[Parameter(Mandatory)][string]$ExpectedArchiveContract)
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/TrustedPythonCliBaseline.ps1"
-$cliSha='1f978246b07b033f98ea7306772508a7f0105774'
+$cliSha='989e968903b849b0af307bf519e2daecffa2c74d'
 $testSha='76680d8c0698f1a028fa214d95bd8dc6d9098bc6'
 $wrapperSha='9c375d7d39b7fe212483112effcdcdd5b61cf381'
 $archiveHash='e6256d26b833f27f5b1ad11af4dfdcce03603020dc5c346b7c1e9b4b61ed927f'
