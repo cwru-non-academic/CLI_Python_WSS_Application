@@ -61,8 +61,8 @@ selected test root, or selected manifest is accepted as baseline authority.
   A future registered caller must require every existing native/platform job.
 - The parent snapshots the complete baseline and payload inventory, files and empty
   directories included, plus tools and products. It separately snapshots caller
-  scripts (including the Core lock), the complete Core checkout, and context/roots bytes before
-  inspect. It rechecks both snapshots before invoking Core evidence after the child.
+  scripts (including the Core lock), the complete Core checkout, and context/roots bytes
+  immediately after trusted inspect (before baseline or selected execution). It rechecks both snapshots before invoking Core evidence after the child.
   Added, deleted, changed, or redirected paths and reparse ancestors fail closed.
 - Authentication/resolution must run in a separate trusted job. The executor job
   must never receive App keys/tokens, credential-bearing action state, or bootstrap
