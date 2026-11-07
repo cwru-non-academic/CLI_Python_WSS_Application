@@ -88,5 +88,6 @@ three candidate-only inputs above. Both work and sibling baseline paths must be 
 
 Snapshot and content tests use deliberately synthetic validator fixtures and real
 child processes. They do not authenticate a Core context, a producer, or a campaign.
-The existing unsupported Core lock still blocks WithContext execution; no production
-workflow is activated by these changes.
+Selected execution remains inactive pending reviewed caller integration, immutable
+bootstrap trust and a separate credential-free hosted executor. These changes do
+not activate a production workflow.
