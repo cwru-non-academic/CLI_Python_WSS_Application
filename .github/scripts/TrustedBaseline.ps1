@@ -4,7 +4,7 @@ function Assert-BaselineRegularPath([string]$Path) {
     while($null -ne $item){
         if(($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'Trusted baseline contains a redirected/reparse path.'}
         $parent=[IO.Path]::GetDirectoryName($item.FullName)
-        if(!$parent -or $parent -ceq $item.FullName){break}
+        if(!$parent -or [StringComparer]::Ordinal.Equals($parent,$item.FullName)){break}
         $item=Get-Item -LiteralPath $parent -Force -ErrorAction Stop
     }
 }
@@ -29,7 +29,9 @@ function Get-TrustedBaselineInventory([string[]]$Roots) {
             }
         }
     }
-    @($entries | Sort-Object -CaseSensitive)
+    $ordered=$entries.ToArray()
+    [Array]::Sort($ordered,[StringComparer]::Ordinal)
+    $ordered
 }
 function New-TrustedBaselineSnapshot([string[]]$Roots) {
     if(!$Roots -or $Roots.Count -eq 0){throw 'At least one protected baseline or authority path is required.'}
@@ -38,5 +40,5 @@ function New-TrustedBaselineSnapshot([string[]]$Roots) {
 function Assert-TrustedBaselineSnapshot($Snapshot) {
     $current=@(Get-TrustedBaselineInventory $Snapshot.roots)
     if($current.Count -ne $Snapshot.inventory.Count){throw 'Selected suite changed trusted baseline inventory/content.'}
-    for($i=0;$i -lt $current.Count;$i++){if($current[$i] -cne $Snapshot.inventory[$i]){throw 'Selected suite changed trusted baseline inventory/content.'}}
+    for($i=0;$i -lt $current.Count;$i++){if(![StringComparer]::Ordinal.Equals($current[$i],$Snapshot.inventory[$i])){throw 'Selected suite changed trusted baseline inventory/content.'}}
 }
