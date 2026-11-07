@@ -71,4 +71,25 @@ class BindingTests(unittest.TestCase):
     def test_skip_worktree(self):
         self.git('update-index','--skip-worktree','conformance/test_modeled_commands.py')
         with self.assertRaises(ValueError): self.resolve()
+class ExecutionCompletenessTests(unittest.TestCase):
+    def test_complete_inventory(self):
+        tests = [unittest.FunctionTestCase(lambda: None) for _ in range(2)]
+        self.assertEqual(m.run_selected_suite(tests).testsRun, 2)
+
+    def test_successful_early_stop_is_rejected(self):
+        class StopAfterSuccess(unittest.FunctionTestCase):
+            def run(self, result=None):
+                super().run(result)
+                result.stop()
+                return result
+        def inventory():
+            return [StopAfterSuccess(lambda: None), unittest.FunctionTestCase(lambda: None)]
+        incomplete = unittest.TestResult()
+        unittest.TestSuite(inventory()).run(incomplete)
+        self.assertTrue(incomplete.wasSuccessful())
+        self.assertEqual(incomplete.skipped, [])
+        self.assertEqual(incomplete.testsRun, 1)
+        with self.assertRaisesRegex(ValueError, 'discovered inventory'):
+            m.run_selected_suite(inventory())
+
 if __name__=='__main__': unittest.main()
