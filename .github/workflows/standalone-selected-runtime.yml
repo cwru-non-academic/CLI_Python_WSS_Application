@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 env:
-  CLI_SOURCE: 1f978246b07b033f98ea7306772508a7f0105774
+  CLI_SOURCE: 989e968903b849b0af307bf519e2daecffa2c74d
   TEST_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6
   WRAPPER_SOURCE: 9c375d7d39b7fe212483112effcdcdd5b61cf381
 jobs:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: dcdef289e4d2d9d54278dd8c22fb3cf76f424c7c
+          ref: af04fa8a6fd7aeb7c6bdc85877b8a27f6292f351
           path: tools
           persist-credentials: false
       - name: Verify exact public producer archive with default read token
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: dcdef289e4d2d9d54278dd8c22fb3cf76f424c7c
+          ref: af04fa8a6fd7aeb7c6bdc85877b8a27f6292f351
           path: tools
           persist-credentials: false
       - uses: actions/checkout@v4

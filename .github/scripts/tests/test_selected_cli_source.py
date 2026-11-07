@@ -101,16 +101,16 @@ class StandaloneSourceTupleTests(unittest.TestCase):
 
     def validate(self, workflow, runner):
         import re
-        expected={'CLI_SOURCE':'1f978246b07b033f98ea7306772508a7f0105774','TEST_SOURCE':'76680d8c0698f1a028fa214d95bd8dc6d9098bc6','WRAPPER_SOURCE':'9c375d7d39b7fe212483112effcdcdd5b61cf381'}
+        expected={'CLI_SOURCE':'989e968903b849b0af307bf519e2daecffa2c74d','TEST_SOURCE':'76680d8c0698f1a028fa214d95bd8dc6d9098bc6','WRAPPER_SOURCE':'9c375d7d39b7fe212483112effcdcdd5b61cf381'}
         for name, sha in expected.items():
             self.assertEqual(re.findall(r'^  '+name+r': ([a-f0-9]{40})$',workflow,re.M),[sha])
         self.assertIn('ref: ${{ env.TEST_SOURCE }}\n          path: selected-tests',workflow)
-        self.assertIn("$cliSha='1f978246b07b033f98ea7306772508a7f0105774'",runner)
+        self.assertIn("$cliSha='989e968903b849b0af307bf519e2daecffa2c74d'",runner)
         self.assertIn("$testSha='76680d8c0698f1a028fa214d95bd8dc6d9098bc6'",runner)
         self.assertIn("$wrapperSha='9c375d7d39b7fe212483112effcdcdd5b61cf381'",runner)
         self.assertIn("'--test-sha',$testSha",runner)
         self.assertNotIn("'--test-sha',$cliSha",runner)
-        self.assertEqual(workflow.count('ref: dcdef289e4d2d9d54278dd8c22fb3cf76f424c7c'),2)
+        self.assertEqual(workflow.count('ref: af04fa8a6fd7aeb7c6bdc85877b8a27f6292f351'),2)
 
     def test_separate_frozen_product_test_and_tool_sources(self):
         self.validate(*self.sources())
@@ -118,10 +118,10 @@ class StandaloneSourceTupleTests(unittest.TestCase):
     def test_coupled_or_wrong_source_tuple_rejected(self):
         workflow,runner=self.sources()
         for bad_workflow,bad_runner in [
-            (workflow.replace('TEST_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6','TEST_SOURCE: 1f978246b07b033f98ea7306772508a7f0105774'),runner),
-            (workflow.replace('CLI_SOURCE: 1f978246b07b033f98ea7306772508a7f0105774','CLI_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6'),runner),
+            (workflow.replace('TEST_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6','TEST_SOURCE: 989e968903b849b0af307bf519e2daecffa2c74d'),runner),
+            (workflow.replace('CLI_SOURCE: 989e968903b849b0af307bf519e2daecffa2c74d','CLI_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6'),runner),
             (workflow,runner.replace("'--test-sha',$testSha","'--test-sha',$cliSha")),
-            (workflow.replace('ref: dcdef289e4d2d9d54278dd8c22fb3cf76f424c7c','ref: dev'),runner)]:
+            (workflow.replace('ref: af04fa8a6fd7aeb7c6bdc85877b8a27f6292f351','ref: dev'),runner)]:
             with self.assertRaises(AssertionError): self.validate(bad_workflow,bad_runner)
 
 if __name__=='__main__': unittest.main()
