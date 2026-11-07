@@ -15,6 +15,7 @@ jobs:
     outputs:
       archive_hash: ${{ steps.verify.outputs.archive_hash }}
       candidate_hash: ${{ steps.verify.outputs.candidate_hash }}
+      archive_contract: ${{ steps.verify.outputs.archive_contract }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,6 +32,8 @@ jobs:
           $ErrorActionPreference='Stop'
           $root="$env:RUNNER_TEMP/verified"
           ./tools/.github/scripts/Resolve-WssRelease.ps1 -ProducerRepository cwru-non-academic/WSSCore -RunId 42288988734 -ExpectedArtifactId 13538204103 -ExpectedCommit 0bc9e2d0af507ee729d39d3a30ab005cc136eabf -ArchiveName WSS-Universal-ci.zip -ExpectedSha256 e6256d26b833f27f5b1ad11af4dfdcce03603020dc5c346b7c1e9b4b61ed927f -OutputRoot $root
+          . ./tools/.github/scripts/PythonContract.ps1
+          "archive_contract=$(Get-PythonProducerContract 0bc9e2d0af507ee729d39d3a30ab005cc136eabf)" >> $env:GITHUB_OUTPUT
           "archive_hash=$((Get-FileHash $root/downloads/WSS-Universal-ci.zip).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "candidate_hash=$((Get-FileHash $root/candidate.json).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
@@ -95,12 +98,14 @@ jobs:
         shell: pwsh
         env:
           VERIFIED_ARCHIVE_HASH: ${{ needs.verify-input.outputs.archive_hash }}
+          VERIFIED_ARCHIVE_CONTRACT: ${{ needs.verify-input.outputs.archive_contract }}
           VERIFIED_CANDIDATE_HASH: ${{ needs.verify-input.outputs.candidate_hash }}
         run: >-
           ./parent/.github/scripts/Invoke-StandalonePythonCliProof.ps1
           -Workspace $env:GITHUB_WORKSPACE -VerifiedRoot "$env:RUNNER_TEMP/verified"
           -OutputRoot "$env:RUNNER_TEMP/standalone-proof"
           -ExpectedArchiveHash $env:VERIFIED_ARCHIVE_HASH -ExpectedCandidateHash $env:VERIFIED_CANDIDATE_HASH
+          -ExpectedArchiveContract $env:VERIFIED_ARCHIVE_CONTRACT
       - uses: actions/upload-artifact@v4
         if: always()
         with:

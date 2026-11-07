@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$Workspace,[Parameter(Mandatory)][string]$VerifiedRoot,
       [Parameter(Mandatory)][string]$OutputRoot,[Parameter(Mandatory)][string]$ExpectedArchiveHash,
-      [Parameter(Mandatory)][string]$ExpectedCandidateHash)
+      [Parameter(Mandatory)][string]$ExpectedCandidateHash,[Parameter(Mandatory)][string]$ExpectedArchiveContract)
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/TrustedPythonCliBaseline.ps1"
 $cliSha='76680d8c0698f1a028fa214d95bd8dc6d9098bc6'
@@ -25,7 +25,8 @@ $toolsSha=Get-OrdinaryPythonToolsSha $cli $cliSha
 Assert-OrdinaryPythonToolsCheckout $tools $toolsSha
 . "$tools/.github/scripts/PythonContract.ps1"
 . "$tools/.github/scripts/wss-ci/Assert-UniversalArchive.ps1"
-$contract=Get-PythonProducerContract $candidate.commit
+if($ExpectedArchiveContract -cne 'macos-ble-v1'){throw 'Unexpected authenticated producer archive contract.'}
+$contract=$ExpectedArchiveContract
 $null=Get-WssUniversalArchiveHashes -Archive $archive -ExpectedSha256 $archiveHash -ExpectedFiles @(Get-WssUniversalFiles $contract)
 if(Test-Path $OutputRoot){throw 'Standalone proof requires fresh output.'}
 New-Item -ItemType Directory $OutputRoot | Out-Null
