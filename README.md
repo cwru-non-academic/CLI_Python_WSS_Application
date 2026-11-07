@@ -81,6 +81,127 @@ connect, or validate physical stimulation. Default serial auto-selection still
 requires a real serial port inventory; the safe construction check uses an
 explicit diagnostic port.
 
+## Interactive commands
+
+The coordinated reload behavior below requires a wrapper revision containing
+`WssConfigurationSnapshot` host reload support. Keep the application's pinned
+wrapper current through the normal verified promotion path. Older wrapper
+revisions may retain only the selected parameter file and may not reconstruct
+Core on reload.
+
+Enter these commands at the application's `>` prompt after startup; they are
+separate from startup options such as `--test`. Command names and finger/channel
+aliases are case-insensitive. In the syntax below, `<...>` is required and
+`[...]` is optional; do not type the brackets.
+
+| Command | What it does and inputs | Example at the prompt |
+| --- | --- | --- |
+| `help` | Show interactive command syntax, units and defaults. | `help` |
+| `status` | Query controller state and available API support. See the state explanation below. | `status` |
+| `start` | Request a broadcast start for the configured devices; takes no channel or magnitude. | `start` |
+| `stop` | Request a broadcast stop; takes no channel argument. | `stop` |
+| `stim <finger\|chN> <magnitude>` | Update one logical channel using the active model and stimulation parameters. Intended magnitude input is a finite number from `0.0` to `1.0`. | `stim ch1 1.0` |
+| `analog <finger\|chN> <pw> [amp] [ipi]` | Update one channel directly, bypassing model/parameter mapping. Pulse width is in microseconds, amplitude is in the mA domain (mapped to device scale), and inter-pulse interval is in milliseconds. Use integers; omitted `amp` is `3`, omitted `ipi` is `10`. | `analog ch1 50 1 10` |
+| `reload-core` | Reload the active `stimConfig.json` through the host reset path, retaining current calibration/model values. Reconstructs Core, including receiver addressing. | `reload-core` |
+| `reload-params [path]` | Reload all three startup-default JSON files. A directory selects all three standard filenames. An explicit file selects calibration only, with startup-default Core/model files. | `reload-params ./Config/stimParams.json` |
+| `save-params` | Write active stimulation parameters to their current JSON file. This is host-side persistence, not a device configuration save. | `save-params` |
+| `quit` or `exit` | Leave the console and clean up the controller. | `quit` |
+
+### Channels, values and state
+
+`chN` selects a 1-based logical channel. Finger aliases map to `thumb` = `ch1`,
+`index` = `ch2`, `middle` = `ch3`, `ring` = `ch4`, and `pinky`/`little` = `ch5`.
+Use a channel available in your configuration; recognizing a name does not make
+that channel available. For example, a one-device configuration has three
+logical channels, so `ring` and `pinky` are outside its range.
+
+`stim ch1 1.0` supplies normalized input **1.0**, not 1 mA. The active P/PD model
+and per-channel `stimParams.json` settings determine the resulting pulse width
+and amplitude. `stim thumb 0.25` supplies 0.25 to the same channel. The intended
+input interval is `0.0` through `1.0`; this is not a claim that the command parser
+rejects every value outside that interval. Model mapping can change the output,
+so even input `0` is not a substitute for the broadcast `stop` command.
+
+`analog ch1 50` uses pulse width 50, amplitude 3 and IPI 10. To choose an IPI,
+supply the amplitude too: `analog ch1 50 1 20`. These are syntax examples, not
+recommended settings for a person or device. Direct analog values do not use
+the normalized calibration mapping. The CLI does not impose a universal
+calibrated operating range; use settings appropriate to your firmware, device
+and calibration. A successfully parsed request does not establish valid physical
+output. Stimulation commands update runtime values; `save-params` does not turn
+an analog request into new calibration settings.
+
+Setup continues asynchronously. `Ready` describes the Core state in which a
+start can be accepted, while `Started` describes started/streaming state;
+`Ready` need not remain true while streaming. `ModeValid` reports model-mode
+support, and `BasicSupported` reports availability of the optional Basic API.
+These flags and printed request messages do not prove physical stimulation.
+Python also prints the resolved configuration directory and Core log path with `status`.
+
+### Parsing and paths
+
+Magnitude uses Python floating-point syntax (for example, `1.0`). Analog
+arguments use integer syntax (`50`, not `50.0`); invalid numeric text prints
+`Command failed`. Missing required `stim`/`analog` arguments print usage. Extra
+arguments are ignored by the current handlers; use the documented argument count.
+The handlers do not explicitly reject non-finite floating-point magnitude text.
+
+Interactive input is split on whitespace. `reload-params` accepts a single path
+token: quotes do **not** enable spaces in paths. For example, use
+`reload-params C:/WSS/Config/stimParams.json`; select a location without spaces.
+
+Relative explicit reload paths are relative to the process working directory.
+The original startup defaults remain anchored even if the working directory
+changes. `reload-params` without an argument always returns to all three startup
+files (`stimConfig.json`, `stimParams.json`, `modelConfig.json`), not the last
+selected profile. For an explicit calibration file, the other two files come
+from startup defaults, not that file's siblings.
+
+Reload stages and validates files before changing the active stack. A Core
+configuration change uses the existing reset path, which stops/zeros output and
+disconnects the old stack before initialization of the replacement. Unchanged
+Core permits calibration/model updates without reconnecting. `reload-core`
+retains applied calibration/model values; `reload-params` rereads them. Wait for
+`Started` before sending new stimulation commands after reconstruction.
+`save-params` writes to the selected calibration file. Use a disposable
+configuration copy when learning commands.
+
+### Practice without hardware
+
+After installing the app, create a temporary copy of `Config` and start
+the simulated transport. For example, from the repository root in PowerShell:
+
+```powershell
+$practiceConfig = Join-Path ([System.IO.Path]::GetTempPath()) ("wss-practice-" + [guid]::NewGuid())
+Copy-Item -LiteralPath ./Config -Destination $practiceConfig -Recurse
+wss-cli --test --config "$practiceConfig" --log-file (Join-Path $practiceConfig 'practice.log')
+```
+
+`--conformance` runs finite diagnostics and exits; it does not open this prompt.
+
+In that simulated session, try these commands one at a time. Inspect `status`
+and let setup progress before requesting a start. These commands demonstrate
+syntax; the configured model and parameters still control the simulated values.
+
+```text
+help
+status
+stim ch1 1.0
+stim thumb 0.25
+analog ch1 50 1 10
+start
+status
+stop
+reload-core
+reload-params
+save-params
+quit
+```
+
+The copy isolates configuration writes, not just the log file. Serial/BLE startup
+selects live transports; keep `--test` for this exercise. A simulated session
+does not validate physical communication or output.
+
 ## Notes
 
 - The CLI imports `WssConfig` and `StimulationController` from `wss_py_wrapper`.
@@ -100,7 +221,8 @@ its existing normalization behavior for invalid address values.
 Keep the firmware and calibration values appropriate to your hardware.
 
 After changing receiver addresses, stop and restart the application so Core
-constructs a new address map. The CLI `reload-core` command does not rebuild that map.
+constructs a new address map. With a coordinated-reload wrapper, `reload-core`
+performs that reconstruction; wait for `Started` before new stimulation.
 Setup continues asynchronously after controller initialization. An initialized
 application or an advancing tick loop does not establish that a device is ready.
 Core setup and tick errors are recorded in the configured log file; check the
