@@ -83,6 +83,12 @@ explicit diagnostic port.
 
 ## Interactive commands
 
+The coordinated reload behavior below requires a wrapper revision containing
+`WssConfigurationSnapshot` host reload support. Keep the application's pinned
+wrapper current through the normal verified promotion path. Older wrapper
+revisions may retain only the selected parameter file and may not reconstruct
+Core on reload.
+
 Enter these commands at the application's `>` prompt after startup; they are
 separate from startup options such as `--test`. Command names and finger/channel
 aliases are case-insensitive. In the syntax below, `<...>` is required and
@@ -96,8 +102,8 @@ aliases are case-insensitive. In the syntax below, `<...>` is required and
 | `stop` | Request a broadcast stop; takes no channel argument. | `stop` |
 | `stim <finger\|chN> <magnitude>` | Update one logical channel using the active model and stimulation parameters. Intended magnitude input is a finite number from `0.0` to `1.0`. | `stim ch1 1.0` |
 | `analog <finger\|chN> <pw> [amp] [ipi]` | Update one channel directly, bypassing model/parameter mapping. Pulse width is in microseconds, amplitude is in the mA domain (mapped to device scale), and inter-pulse interval is in milliseconds. Use integers; omitted `amp` is `3`, omitted `ipi` is `10`. | `analog ch1 50 1 10` |
-| `reload-core` | Reload `stimConfig.json` from the active Core configuration. Does not reconstruct receiver addressing; restart after address changes. | `reload-core` |
-| `reload-params [path]` | Reload the current parameter JSON, or select a JSON file/directory. A directory selects its `stimParams.json`. Subsequent reloads without a path use that selected file. | `reload-params ./Config/stimParams.json` |
+| `reload-core` | Reload the active `stimConfig.json` through the host reset path, retaining current calibration/model values. Reconstructs Core, including receiver addressing. | `reload-core` |
+| `reload-params [path]` | Reload all three startup-default JSON files. A directory selects all three standard filenames. An explicit file selects calibration only, with startup-default Core/model files. | `reload-params ./Config/stimParams.json` |
 | `save-params` | Write active stimulation parameters to their current JSON file. This is host-side persistence, not a device configuration save. | `save-params` |
 | `quit` or `exit` | Leave the console and clean up the controller. | `quit` |
 
@@ -144,12 +150,21 @@ Interactive input is split on whitespace. `reload-params` accepts a single path
 token: quotes do **not** enable spaces in paths. For example, use
 `reload-params C:/WSS/Config/stimParams.json`; select a location without spaces.
 
-Relative reload paths are relative to the process working directory, which may
-differ from the default application configuration directory. Loading parameters
-can backfill and persist missing template entries; `save-params` also writes to
-the selected file. Use a disposable configuration copy when learning commands.
-`reload-core` does not reload `modelConfig.json` or stimulation parameters;
-restart after model configuration changes and use `reload-params` for parameters.
+Relative explicit reload paths are relative to the process working directory.
+The original startup defaults remain anchored even if the working directory
+changes. `reload-params` without an argument always returns to all three startup
+files (`stimConfig.json`, `stimParams.json`, `modelConfig.json`), not the last
+selected profile. For an explicit calibration file, the other two files come
+from startup defaults, not that file's siblings.
+
+Reload stages and validates files before changing the active stack. A Core
+configuration change uses the existing reset path, which stops/zeros output and
+disconnects the old stack before initialization of the replacement. Unchanged
+Core permits calibration/model updates without reconnecting. `reload-core`
+retains applied calibration/model values; `reload-params` rereads them. Wait for
+`Started` before sending new stimulation commands after reconstruction.
+`save-params` writes to the selected calibration file. Use a disposable
+configuration copy when learning commands.
 
 ### Practice without hardware
 
