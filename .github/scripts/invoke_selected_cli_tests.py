@@ -28,7 +28,9 @@ def checkout(root: Path, sha: str, paths: tuple[str, ...] = ()) -> None:
         raise ValueError("Expected immutable full source SHA")
     if Path(git(root, "rev-parse", "--show-toplevel")).resolve() != root or git(root, "rev-parse", "HEAD") != sha:
         raise ValueError("Checkout root or SHA differs from frozen source")
-    if git(root, "status", "--porcelain", "--untracked-files=all", "--", *paths):
+    if any(not line.startswith("H ") for line in git(root, "ls-files", "-v", "--", *paths).splitlines()):
+        raise ValueError("Source index flags may hide changes")
+    if git(root, "status", "--porcelain", "--untracked-files=all", "--ignored", "--", *paths):
         raise ValueError("Changed or untracked source files")
 
 

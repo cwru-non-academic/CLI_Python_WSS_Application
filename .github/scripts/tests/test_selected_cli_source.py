@@ -56,4 +56,19 @@ class BindingTests(unittest.TestCase):
     def test_missing_matrix(self):
         self.contract['test_files']=['test_other.py']; self.write_contract(); self.commit()
         with self.assertRaises(ValueError): self.resolve()
+    def test_ignored_unchecked_hash_bytecode(self):
+        import py_compile
+        (self.root/'src').mkdir()
+        source=self.root/'src/probe.py'
+        source.write_text('value=1\n')
+        (self.root/'.gitignore').write_text('__pycache__/\n*.pyc\n')
+        self.commit()
+        py_compile.compile(str(source),doraise=True,invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+        with self.assertRaises(ValueError): m.checkout(self.root,self.sha,('src',))
+    def test_assume_unchanged(self):
+        self.git('update-index','--assume-unchanged','conformance/test_modeled_commands.py')
+        with self.assertRaises(ValueError): self.resolve()
+    def test_skip_worktree(self):
+        self.git('update-index','--skip-worktree','conformance/test_modeled_commands.py')
+        with self.assertRaises(ValueError): self.resolve()
 if __name__=='__main__': unittest.main()
