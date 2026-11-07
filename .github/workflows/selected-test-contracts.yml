@@ -29,3 +29,17 @@ jobs:
       - name: Verify ordinary immutable tooling pins
         shell: pwsh
         run: ./.github/scripts/tests/OrdinaryPythonTooling.Tests.ps1
+
+      - name: Reject selected child baseline and authority mutations
+        shell: pwsh
+        run: ./.github/scripts/tests/TrustedBaseline.Tests.ps1
+      - name: Check out immutable validator tooling
+        uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: 9c375d7d39b7fe212483112effcdcdd5b61cf381
+          path: baseline-tools
+          persist-credentials: false
+      - name: Validate baseline content contracts (synthetic, not runtime acceptance)
+        shell: pwsh
+        run: ./.github/scripts/tests/TrustedPythonCliBaseline.Tests.ps1 -ToolsRoot ./baseline-tools
