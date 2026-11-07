@@ -41,7 +41,7 @@ $arguments=@('-B',"$PSScriptRoot/invoke_selected_cli_tests.py",'--product-root',
     '--wrapper-root',$wrapper,'--wrapper-sha',$wrapperSha,'--payload-root',$baseline.payload_root,
     '--test-root',$tests,'--test-sha',$cliSha,'--test-repository','cwru-non-academic/CLI_Python_WSS_Application',
     '--test-selection-id',('a'*64),'--evidence',$evidence)
-Invoke-CredentialFreeSelectedProcess (Get-Command python -CommandType Application).Source $arguments
+Invoke-CredentialFreeSelectedProcess (Get-Command python -CommandType Application | Select-Object -First 1).Source $arguments
 Assert-TrustedBaselineSnapshot $authority
 Assert-TrustedBaselineSnapshot $protected
 $result=Get-Content $evidence -Raw | ConvertFrom-Json
