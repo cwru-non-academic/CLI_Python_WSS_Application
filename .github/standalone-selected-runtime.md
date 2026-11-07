@@ -1,10 +1,10 @@
 # Standalone candidate-source CLI proof
 
 `standalone-selected-runtime.yml` proves one explicit proposed source pair on
-Windows: product CLI source `989e968903b849b0af307bf519e2daecffa2c74d`, selected test source
+Windows: product CLI source `628647e111c4b9976d28ff97e537abed0b8b0200`, selected test source
 `76680d8c0698f1a028fa214d95bd8dc6d9098bc6`, candidate wrapper source
 `9c375d7d39b7fe212483112effcdcdd5b61cf381`, and guarded tooling
-`af04fa8a6fd7aeb7c6bdc85877b8a27f6292f351`. This is not the
+`1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a`. This is not the
 ordinary product gitlink pair, authenticated Core selection, campaign evidence,
 activation, or all-platform selected coverage. Ordinary native/platform gates
 remain unchanged and required.
@@ -34,6 +34,11 @@ source or gitlink. The later B commit binds this tuple and is the final hosted p
 subject; the intermediate A commit is not an acceptance result. Ordinary main still
 uses its own actual committed product/gitlink.
 
-Current A is retained at `ci/tooling/989e968903b849b0af307bf519e2daecffa2c74d`. It is derived directly from
-`1f978246b07b033f98ea7306772508a7f0105774` with only canonical executable tooling
-pin replacements; every non-workflow tracked blob, mode and gitlink is unchanged.
+Current A is `628647e111c4b9976d28ff97e537abed0b8b0200`, the immutable copy of the reviewed current dev
+candidate after its approved setup-documentation correction. It includes canonical
+Core `a3ce85cbecc5903d79d2e615b200f6a2cfb03741` common tooling and matching
+Python owner `1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a` pins. Its entire non-`.github` tracked tree,
+including file modes and product gitlinks, is identical to previous A
+`989e968903b849b0af307bf519e2daecffa2c74d`. Selected tests remain at their separate frozen source.
+Retained-reference publication and full hosted B proof are separate review gates;
+A alone is not an acceptance result. Main retains its different ordinary gitlink.
