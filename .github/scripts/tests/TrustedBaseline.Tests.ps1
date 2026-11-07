@@ -47,3 +47,35 @@ foreach($action in @('none','modify','add-file','delete-file','add-dir','delete-
 }
 # Keep disposable fixtures for diagnosis; no source or global paths are removed.
 Write-Host "PASS: baseline/authority snapshots; fixtures $base"
+
+# Exact path identity is ordinal, independent of culture and Unicode normalization.
+$ordinalBase=Join-Path ((& python -c 'import os,tempfile; print(os.path.realpath(tempfile.gettempdir()))').Trim()) ('ordinal-inventory-'+[guid]::NewGuid().ToString('N'))
+$null=New-Item -ItemType Directory -Path $ordinalBase
+foreach($name in @('Z.txt','a.txt')){[IO.File]::WriteAllText((Join-Path $ordinalBase $name),'same')}
+$ordinalSnapshot=New-TrustedBaselineSnapshot @($ordinalBase)
+Assert-TrustedBaselineSnapshot $ordinalSnapshot
+$expected=[string[]]$ordinalSnapshot.inventory.Clone()
+[Array]::Sort($expected,[StringComparer]::Ordinal)
+for($i=0;$i -lt $expected.Count;$i++){if(![StringComparer]::Ordinal.Equals($expected[$i],$ordinalSnapshot.inventory[$i])){throw 'Inventory ordering is not ordinal.'}}
+if($IsLinux){
+    [IO.File]::WriteAllText((Join-Path $ordinalBase 'Case.txt'),'same')
+    $before=New-TrustedBaselineSnapshot @($ordinalBase)
+    [IO.File]::WriteAllText((Join-Path $ordinalBase 'case.txt'),'same')
+    $rejected=$false;try{Assert-TrustedBaselineSnapshot $before}catch{$rejected=$true}
+    if(!$rejected){throw 'Accepted case-distinct path addition.'}
+    Write-Output 'PASS: Linux case-distinct path addition rejected.'
+}
+if(!$IsMacOS){
+    # Linux/NTFS preserve these distinct spellings; macOS commonly normalizes names.
+    $unicodeRoot=Join-Path $ordinalBase 'unicode'
+    $null=New-Item -ItemType Directory -Path $unicodeRoot
+    $composed=([string][char]0x00e9)+'.txt'
+    $decomposed='e'+([string][char]0x0301)+'.txt'
+    [IO.File]::WriteAllText((Join-Path $unicodeRoot $composed),'same')
+    $before=New-TrustedBaselineSnapshot @($unicodeRoot)
+    Move-Item -LiteralPath (Join-Path $unicodeRoot $composed) -Destination (Join-Path $unicodeRoot $decomposed)
+    $rejected=$false;try{Assert-TrustedBaselineSnapshot $before}catch{$rejected=$true}
+    if(!$rejected){throw 'Accepted normalization-equivalent path rename.'}
+    Write-Output 'PASS: Unicode normalization-equivalent path rename rejected.'
+}
+Write-Output 'PASS: exact ordinal inventory ordering and identity.'
