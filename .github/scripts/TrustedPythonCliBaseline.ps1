@@ -2,6 +2,15 @@
 . "$PSScriptRoot/TrustedBaseline.ps1"
 . "$PSScriptRoot/Read-OrdinaryPythonTooling.ps1"
 . "$PSScriptRoot/SelectedProcessIsolation.ps1"
+# Apply the existing source/index/input/origin boundary to the workflow authority,
+# which can be distinct from the frozen runtime CLI fixture.
+function Assert-PythonCliWorkflowSource([string]$Root) {
+    Assert-BaselineRegularPath $Root
+    $remote=(& git --no-optional-locks -C $Root remote get-url origin).Trim()
+    if($LASTEXITCODE -ne 0 -or $remote -cnotmatch '^(https://github.com/|git@github.com:)cwru-non-academic/CLI_Python_WSS_Application(\.git)?$'){throw 'Wrong CLI workflow authority repository.'}
+    if(@(& git --no-optional-locks -C $Root status --porcelain --untracked-files=all --ignored -- .github).Count -or $LASTEXITCODE -ne 0){throw 'Workflow authority cannot contain ignored or untracked executable inputs.'}
+    if(@(& git --no-optional-locks -C $Root ls-files -v | Where-Object {$_ -cnotmatch '^H '}).Count -or $LASTEXITCODE -ne 0){throw 'Workflow authority cannot hide source changes in the Git index.'}
+}
 function Assert-PythonCliBaselineContent {
     param([string]$Root,[string]$PayloadRoot,[string]$WrapperRoot,[string]$WrapperSha,[string]$CliSha,
           [ValidateSet('committed','candidate')][string]$Mode,$Config,$Candidate,$Tooling=$null)
@@ -52,9 +61,21 @@ function Invoke-TrustedPythonCliBaseline {
           [Parameter(Mandatory)][string]$WrapperSha,[Parameter(Mandatory)][string]$CliRoot,
           [Parameter(Mandatory)][string]$CliSha,[Parameter(Mandatory)][string]$OutputRoot,
           [Parameter(Mandatory)][ValidateSet('committed','candidate')][string]$Mode,
-          [string]$FixtureRoot='', [string]$ArtifactRoot='', [string]$CandidatePath='', [string]$PythonExecutable='python')
+          [string]$FixtureRoot='', [string]$ArtifactRoot='', [string]$CandidatePath='', [string]$PythonExecutable='python',
+          [string]$WorkflowSourceRoot, [string]$WorkflowSourceSha)
     $PythonExecutable=(Get-Command $PythonExecutable -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-    $toolsSha=Get-OrdinaryPythonToolsSha $CliRoot $CliSha
+    $hasRoot=$PSBoundParameters.ContainsKey('WorkflowSourceRoot')
+    $hasSha=$PSBoundParameters.ContainsKey('WorkflowSourceSha')
+    if(!$hasRoot -and !$hasSha){$WorkflowSourceRoot=$CliRoot;$WorkflowSourceSha=$CliSha}
+    elseif(!$hasRoot -or !$hasSha -or [string]::IsNullOrWhiteSpace($WorkflowSourceRoot) -or [string]::IsNullOrWhiteSpace($WorkflowSourceSha)){throw 'Workflow source root and SHA must be supplied together and nonblank.'}
+    # Trusted read-only Git checks must not refresh indexes captured by the parent.
+    # Limit this to the helper read; do not change the child execution environment.
+    $optionalLocks=[Environment]::GetEnvironmentVariable('GIT_OPTIONAL_LOCKS')
+    try {
+        $env:GIT_OPTIONAL_LOCKS='0'
+        Assert-PythonCliWorkflowSource $WorkflowSourceRoot
+        $toolsSha=Get-OrdinaryPythonToolsSha $WorkflowSourceRoot $WorkflowSourceSha
+    } finally { [Environment]::SetEnvironmentVariable('GIT_OPTIONAL_LOCKS',$optionalLocks) }
     Assert-OrdinaryPythonToolsCheckout $ToolsRoot $toolsSha
     Assert-BaselineRegularPath $ToolsRoot
     $remote=(& git -C $ToolsRoot remote get-url origin).Trim()
@@ -69,7 +90,7 @@ function Invoke-TrustedPythonCliBaseline {
     Assert-PythonSource $CliRoot $CliSha -IgnoreSubmodule
     if(Test-Path -LiteralPath $OutputRoot){throw 'Trusted baseline output must be new; importing evidence is forbidden.'}
     $output=[IO.Path]::GetFullPath($OutputRoot)
-    foreach($source in @($ToolsRoot,$WrapperRoot,$CliRoot,$FixtureRoot,$ArtifactRoot) | Where-Object {$_}){
+    foreach($source in @($ToolsRoot,$WrapperRoot,$CliRoot,$WorkflowSourceRoot,$FixtureRoot,$ArtifactRoot) | Where-Object {$_}){
         $source=[IO.Path]::GetFullPath($source)
         if($output -eq $source -or $output.StartsWith($source+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($output+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Baseline output must not overlap any immutable source/input.'}
     }
@@ -99,11 +120,14 @@ function Invoke-TrustedPythonCliBaseline {
         if($toolBinding.profile.profile -cne 'layered-v1'){throw 'Modern selected CLI is incompatible with legacy baseline; ordinary legacy coverage remains separate.'}
         $runner=Join-Path $ToolsRoot '.github/scripts/Invoke-ProfiledPythonConformance.ps1'
     }
+    # All trusted identity/status reads precede this .git-inclusive snapshot.
+    $authorityBefore=New-TrustedBaselineSnapshot @($WorkflowSourceRoot)
     # Baseline receives NO selected-root, selected-manifest, or selected-suite argument.
     $before=New-TrustedBaselineSnapshot @($ToolsRoot,(Join-Path $WrapperRoot 'conformance'),$configPath)
     Invoke-CredentialFreeSelectedPowerShell $runner $options
     Assert-TrustedBaselineSnapshot $before
     Assert-TrustedBaselineSnapshot $toolsBefore
+    Assert-TrustedBaselineSnapshot $authorityBefore
     Assert-PythonCliBaselineContent $OutputRoot $payload $WrapperRoot $WrapperSha $CliSha $Mode $config $candidate $toolBinding
-    [pscustomobject]@{payload_root=$payload;root=$OutputRoot;tools_sha=$toolsSha}
+    [pscustomobject]@{payload_root=$payload;root=$OutputRoot;tools_sha=$toolsSha;workflow_source_sha=$WorkflowSourceSha}
 }
