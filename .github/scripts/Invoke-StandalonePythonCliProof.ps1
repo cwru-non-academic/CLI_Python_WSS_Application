@@ -5,7 +5,8 @@ param([Parameter(Mandatory)][string]$Workspace,[Parameter(Mandatory)][string]$Ve
       [Parameter(Mandatory)][string]$ExpectedCandidateHash,[Parameter(Mandatory)][string]$ExpectedArchiveContract)
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/TrustedPythonCliBaseline.ps1"
-$cliSha='76680d8c0698f1a028fa214d95bd8dc6d9098bc6'
+$cliSha='1f978246b07b033f98ea7306772508a7f0105774'
+$testSha='76680d8c0698f1a028fa214d95bd8dc6d9098bc6'
 $wrapperSha='9c375d7d39b7fe212483112effcdcdd5b61cf381'
 $archiveHash='e6256d26b833f27f5b1ad11af4dfdcce03603020dc5c346b7c1e9b4b61ed927f'
 $cli=Join-Path $Workspace 'cli';$wrapper=Join-Path $Workspace 'wrapper'
@@ -40,11 +41,11 @@ $evidence="$OutputRoot/selected/test-source-evidence.json"
 # Synthetic label only, deliberately not a Core selection identity.
 $arguments=@('-B',"$PSScriptRoot/invoke_selected_cli_tests.py",'--product-root',$cli,'--product-sha',$cliSha,
     '--wrapper-root',$wrapper,'--wrapper-sha',$wrapperSha,'--payload-root',$baseline.payload_root,
-    '--test-root',$tests,'--test-sha',$cliSha,'--test-repository','cwru-non-academic/CLI_Python_WSS_Application',
+    '--test-root',$tests,'--test-sha',$testSha,'--test-repository','cwru-non-academic/CLI_Python_WSS_Application',
     '--test-selection-id',('a'*64),'--evidence',$evidence)
 Invoke-CredentialFreeSelectedProcess (Get-Command python -CommandType Application | Select-Object -First 1).Source $arguments
 Assert-TrustedBaselineSnapshot $authority
 Assert-TrustedBaselineSnapshot $protected
 $result=Get-Content $evidence -Raw | ConvertFrom-Json
 if($result.tests_run -ne 10 -or $result.passed -cne $true){throw 'Required selected CLI10 did not pass.'}
-@{schema='standalone-python-cli-proof/v1';scope='Windows candidate-source only; not Core campaign acceptance';baseline_single=16;baseline_multi=16;selected=10;parent_recheck=$true;cli=$cliSha;wrapper=$wrapperSha;tools=$toolsSha;candidate=$candidate} | ConvertTo-Json -Depth 8 | Set-Content "$OutputRoot/standalone-result.json"
+@{schema='standalone-python-cli-proof/v1';scope='Windows candidate-source only; not Core campaign acceptance';baseline_single=16;baseline_multi=16;selected=10;parent_recheck=$true;cli=$cliSha;tests=$testSha;wrapper=$wrapperSha;tools=$toolsSha;candidate=$candidate} | ConvertTo-Json -Depth 8 | Set-Content "$OutputRoot/standalone-result.json"
