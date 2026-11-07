@@ -221,7 +221,8 @@ its existing normalization behavior for invalid address values.
 Keep the firmware and calibration values appropriate to your hardware.
 
 After changing receiver addresses, stop and restart the application so Core
-constructs a new address map. The CLI `reload-core` command does not rebuild that map.
+constructs a new address map. With a coordinated-reload wrapper, `reload-core`
+performs that reconstruction; wait for `Started` before new stimulation.
 Setup continues asynchronously after controller initialization. An initialized
 application or an advancing tick loop does not establish that a device is ready.
 Core setup and tick errors are recorded in the configured log file; check the
