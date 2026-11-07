@@ -87,14 +87,16 @@ def flatten(suite):
 
 def run(args) -> None:
     product, wrapper, payload, test_root = (Path(value).resolve() for value in (args.product_root, args.wrapper_root, args.payload_root, args.test_root))
-    checkout(product, args.product_sha, ("src", "Config"))
-    checkout(wrapper, args.wrapper_sha, ("src",))
+    checkout(product, args.product_sha, ("src", "Config", ".github"))
+    checkout(wrapper, args.wrapper_sha, ("src", ".github"))
     config = json.loads((product / ".github/python-ci.json").read_text(encoding="utf-8-sig"))
     if config.get("baseline_ready") is not True:
         raise ValueError("Product readiness is not selectable")
     tests = resolve_tests(test_root, args.test_sha, args.test_repository, args.test_selection_id, product)
     payload_before = inventory(payload)
     evidence = Path(args.evidence).resolve()
+    if any(evidence.is_relative_to(root) for root in (product, wrapper, test_root, payload)):
+        raise ValueError("Evidence must be outside immutable input roots")
     if evidence.exists():
         raise ValueError("Evidence must be new")
     evidence.parent.mkdir(parents=True, exist_ok=True)
@@ -129,8 +131,8 @@ def run(args) -> None:
     if not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses:
         raise ValueError("Selected CLI tests failed, skipped, or expected failure")
     recheck_tests(tests, product)
-    checkout(product, args.product_sha, ("src", "Config"))
-    checkout(wrapper, args.wrapper_sha, ("src",))
+    checkout(product, args.product_sha, ("src", "Config", ".github"))
+    checkout(wrapper, args.wrapper_sha, ("src", ".github"))
     assert_product_modules()
     if inventory(payload) != payload_before:
         raise ValueError("Selected payload changed during test execution")
