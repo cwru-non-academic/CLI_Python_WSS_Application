@@ -22,3 +22,6 @@ jobs:
           python-version: '3.x'
       - name: Reject malformed, mutable and coupled selected sources
         run: python -B .github/scripts/tests/test_selected_cli_source.py
+      - name: Verify selected suite credential isolation
+        shell: pwsh
+        run: ./.github/scripts/tests/SelectedProcessIsolation.Tests.ps1
