@@ -12,10 +12,11 @@ $PythonExecutable=(Get-Command $PythonExecutable -CommandType Application -Error
 . "$PSScriptRoot/SelectedProcessIsolation.ps1"
 . "$PSScriptRoot/SelectedTestContext.ps1"
 . "$PSScriptRoot/TrustedPythonCliBaseline.ps1"
-# Freeze authority bytes before inspect; selected code cannot rewrite the caller's
-# lock, Core source or context/roots and then exploit a mutable Git index/config.
-$authority=New-TrustedBaselineSnapshot @($PSScriptRoot,$CoreRoot,$ContextPath,$RootsPath)
 $binding=Invoke-ReviewedSelectionCore $CoreRoot inspect 'python-cli' $ContextPath $RootsPath
+# Initial trusted inspect may refresh Git index metadata. Freeze the complete
+# checkout immediately afterward, before baseline or any selected child executes.
+# Selected code cannot rewrite lock/source/context and hide it with Git metadata.
+$authority=New-TrustedBaselineSnapshot @($PSScriptRoot,$CoreRoot,$ContextPath,$RootsPath)
 $roots=Get-Content -LiteralPath $RootsPath -Raw | ConvertFrom-Json
 $product=Get-SelectedProduct $roots 'cwru-non-academic/CLI_Python_WSS_Application'
 $wrapper=Get-SelectedProduct $roots 'cwru-non-academic/Python_WSS_Integration_Lib'
