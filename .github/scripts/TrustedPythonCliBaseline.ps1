@@ -53,6 +53,7 @@ function Invoke-TrustedPythonCliBaseline {
           [Parameter(Mandatory)][string]$CliSha,[Parameter(Mandatory)][string]$OutputRoot,
           [Parameter(Mandatory)][ValidateSet('committed','candidate')][string]$Mode,
           [string]$FixtureRoot='', [string]$ArtifactRoot='', [string]$CandidatePath='', [string]$PythonExecutable='python')
+    $PythonExecutable=(Get-Command $PythonExecutable -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
     $toolsSha=Get-OrdinaryPythonToolsSha $CliRoot $CliSha
     Assert-OrdinaryPythonToolsCheckout $ToolsRoot $toolsSha
     Assert-BaselineRegularPath $ToolsRoot

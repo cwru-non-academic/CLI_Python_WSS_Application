@@ -8,6 +8,7 @@ param(
     [string]$PythonExecutable='python'
 )
 $ErrorActionPreference='Stop'
+$PythonExecutable=(Get-Command $PythonExecutable -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 . "$PSScriptRoot/SelectedProcessIsolation.ps1"
 . "$PSScriptRoot/SelectedTestContext.ps1"
 . "$PSScriptRoot/TrustedPythonCliBaseline.ps1"
@@ -29,7 +30,7 @@ $arguments=@('-B',"$PSScriptRoot/invoke_selected_cli_tests.py",'--product-root',
     '--wrapper-root',$wrapper.path,'--wrapper-sha',$wrapper.commit,'--payload-root',$baseline.payload_root,
     '--test-root',$roots.test_root,'--test-sha',$binding.test_commit,'--test-repository',$binding.test_repository,
     '--test-selection-id',$binding.selection_id,'--evidence',(Join-Path $WorkRoot 'test-source-evidence.json'))
-Invoke-CredentialFreeSelectedProcess (Get-Command $PythonExecutable -ErrorAction Stop).Source $arguments
+Invoke-CredentialFreeSelectedProcess $PythonExecutable $arguments
 # Recheck using already-loaded parent code BEFORE launching any Core node process.
 Assert-TrustedBaselineSnapshot $authority
 Assert-TrustedBaselineSnapshot $protected
