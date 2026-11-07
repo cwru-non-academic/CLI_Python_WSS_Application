@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 env:
-  CLI_SOURCE: 989e968903b849b0af307bf519e2daecffa2c74d
+  CLI_SOURCE: 628647e111c4b9976d28ff97e537abed0b8b0200
   TEST_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6
   WRAPPER_SOURCE: 9c375d7d39b7fe212483112effcdcdd5b61cf381
 jobs:
