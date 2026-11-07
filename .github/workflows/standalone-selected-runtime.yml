@@ -1,0 +1,114 @@
+name: Standalone candidate-source CLI proof
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  CLI_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6
+  WRAPPER_SOURCE: 9c375d7d39b7fe212483112effcdcdd5b61cf381
+jobs:
+  verify-input:
+    name: Verify standalone producer input
+    runs-on: ubuntu-latest
+    outputs:
+      archive_hash: ${{ steps.verify.outputs.archive_hash }}
+      candidate_hash: ${{ steps.verify.outputs.candidate_hash }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: 9c375d7d39b7fe212483112effcdcdd5b61cf381
+          path: tools
+          persist-credentials: false
+      - name: Verify exact public producer archive with default read token
+        id: verify
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $root="$env:RUNNER_TEMP/verified"
+          ./tools/.github/scripts/Resolve-WssRelease.ps1 -ProducerRepository cwru-non-academic/WSSCore -RunId 42288988734 -ExpectedArtifactId 13538204103 -ExpectedCommit 0bc9e2d0af507ee729d39d3a30ab005cc136eabf -ArchiveName WSS-Universal-ci.zip -ExpectedSha256 e6256d26b833f27f5b1ad11af4dfdcce03603020dc5c346b7c1e9b4b61ed927f -OutputRoot $root
+          "archive_hash=$((Get-FileHash $root/downloads/WSS-Universal-ci.zip).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "candidate_hash=$((Get-FileHash $root/candidate.json).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standalone-verified-input
+          path: |
+            ${{ runner.temp }}/verified/downloads/WSS-Universal-ci.zip
+            ${{ runner.temp }}/verified/candidate.json
+          if-no-files-found: error
+  standalone-runtime:
+    name: Standalone Windows baseline then selected CLI
+    needs: verify-input
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: parent
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/CLI_Python_WSS_Application
+          ref: ${{ env.CLI_SOURCE }}
+          path: cli
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/CLI_Python_WSS_Application
+          ref: ${{ env.CLI_SOURCE }}
+          path: selected-tests
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: ${{ env.WRAPPER_SOURCE }}
+          path: wrapper
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: 9c375d7d39b7fe212483112effcdcdd5b61cf381
+          path: tools
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/CSharp_WSS_Integration_Lib
+          ref: fc427c5b8bc6534a7d02f00283830072572aa03a
+          path: fixture
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.316'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pythonnet==3.0.5
+      - uses: actions/download-artifact@v4
+        with:
+          name: standalone-verified-input
+          path: ${{ runner.temp }}/verified
+      - name: Run fresh mandatory baseline then isolated selected tests
+        shell: pwsh
+        env:
+          VERIFIED_ARCHIVE_HASH: ${{ needs.verify-input.outputs.archive_hash }}
+          VERIFIED_CANDIDATE_HASH: ${{ needs.verify-input.outputs.candidate_hash }}
+        run: >-
+          ./parent/.github/scripts/Invoke-StandalonePythonCliProof.ps1
+          -Workspace $env:GITHUB_WORKSPACE -VerifiedRoot "$env:RUNNER_TEMP/verified"
+          -OutputRoot "$env:RUNNER_TEMP/standalone-proof"
+          -ExpectedArchiveHash $env:VERIFIED_ARCHIVE_HASH -ExpectedCandidateHash $env:VERIFIED_CANDIDATE_HASH
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: standalone-candidate-source-cli-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/standalone-proof/standalone-result.json
+            ${{ runner.temp }}/standalone-proof/selected/*.json
+            ${{ runner.temp }}/standalone-proof/baseline/**/*.json
+            ${{ runner.temp }}/standalone-proof/baseline/**/*.xml
+            ${{ runner.temp }}/standalone-proof/baseline/**/*.log
+          if-no-files-found: warn
