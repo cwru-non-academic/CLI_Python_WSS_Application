@@ -129,9 +129,7 @@ def run(args) -> None:
     names = [test._testMethodName for test in canonical]
     if len(names) != 10 or set(names) != required:
         raise ValueError("Mandatory production command inventory changed")
-    result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(all_tests))
-    if not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses:
-        raise ValueError("Selected CLI tests failed, skipped, or expected failure")
+    result = run_selected_suite(all_tests)
     recheck_tests(tests, product)
     checkout(product, args.product_sha, ("src", "Config", ".github"))
     checkout(wrapper, args.wrapper_sha, ("src", ".github"))
@@ -146,6 +144,16 @@ def run(args) -> None:
     with evidence.open("x", encoding="utf-8") as stream:
         json.dump(record, stream, indent=2)
         stream.write("\n")
+
+
+def run_selected_suite(all_tests):
+    expected_count = len(all_tests)
+    result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(all_tests))
+    if result.testsRun != expected_count:
+        raise ValueError("Selected CLI test execution did not complete the discovered inventory")
+    if not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses:
+        raise ValueError("Selected CLI tests failed, skipped, or expected failure")
+    return result
 
 
 def main():
