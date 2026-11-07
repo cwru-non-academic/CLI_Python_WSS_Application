@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: 52ce2c33c8263dda3e767a537b3762652f631bef
           path: tools
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: 52ce2c33c8263dda3e767a537b3762652f631bef
           path: tools
           persist-credentials: false
       - name: Verify CLI transport options before any controller startup
@@ -225,7 +225,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: 52ce2c33c8263dda3e767a537b3762652f631bef
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
@@ -315,7 +315,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: 52ce2c33c8263dda3e767a537b3762652f631bef
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
@@ -376,7 +376,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: 52ce2c33c8263dda3e767a537b3762652f631bef
           path: tools
           persist-credentials: false
       - uses: actions/download-artifact@v4
