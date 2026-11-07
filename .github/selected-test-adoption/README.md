@@ -37,6 +37,43 @@ ordinary legacy plus candidate layered coverage is preserved on both branches.
 
 C# bridge: Invoke-SelectedCSharpTestsWithContext.ps1 -TargetId csharp-wrapper or
 csharp-cli. Python CLI bridge: Invoke-SelectedPythonCliTestsWithContext.ps1.
-All take CoreRoot, ContextPath, RootsPath, PayloadRoot, WorkRoot. The Core checkout
+The C# bridge takes CoreRoot, ContextPath, RootsPath, PayloadRoot, WorkRoot.
+The Python CLI interface is documented below. The Core checkout
 must match the checked-in reviewed lock, so the current old lock intentionally
 prevents premature activation. Default CI and release authorization are unchanged.
+### Trusted baseline before the selected CLI child
+
+The CLI bridge now requires explicit `Mode` and `ToolsRoot`. It executes a fresh
+mandatory baseline locally, before selected code, using the immutable Python tools
+pin read from the exact CLI product's committed `cli-ci.yml`. No baseline artifact,
+selected test root, or selected manifest is accepted as baseline authority.
+
+- Committed mode preserves the actual CLI wrapper gitlink and uses the ordinary
+  profile runner. Modern selected tests reject a legacy profile; the separate
+  ordinary legacy workflow remains unchanged.
+- Candidate mode requires `FixtureRoot`, `ArtifactRoot`, and `CandidatePath` from
+  the existing trusted resolver and exact fixture checkout. It uses the existing
+  candidate evidence schema and does not imply acceptance of a substituted ordinary
+  gitlink. The selected child uses the baseline's fresh candidate projection.
+- Both canonical stages must contain all sixteen successful cases, with exact
+  source, fixture, runtime, candidate, XML, log, and projection bindings. These
+  canonical stages do not replace any Windows/Linux/macOS/native architecture gate.
+  A future registered caller must require every existing native/platform job.
+- The parent snapshots the complete baseline and payload inventory, files and empty
+  directories included, plus tools and products. It separately snapshots caller
+  scripts (including the Core lock), the complete Core checkout, and context/roots bytes
+  immediately after trusted inspect (before baseline or selected execution). It rechecks both snapshots before invoking Core evidence after the child.
+  Added, deleted, changed, or redirected paths and reparse ancestors fail closed.
+- Authentication/resolution must run in a separate trusted job. The executor job
+  must never receive App keys/tokens, credential-bearing action state, or bootstrap
+  secrets. Environment stripping is defense in depth, not a job isolation boundary.
+
+The selected CLI bridge no longer takes `PayloadRoot`: its payload is derived from
+the freshly validated baseline. It takes `CoreRoot`, `ContextPath`, `RootsPath`,
+`ToolsRoot`, `WorkRoot`, explicit `Mode`, and optional `PythonExecutable`, plus the
+three candidate-only inputs above. Both work and sibling baseline paths must be new.
+
+Snapshot and content tests use deliberately synthetic validator fixtures and real
+child processes. They do not authenticate a Core context, a producer, or a campaign.
+The existing unsupported Core lock still blocks WithContext execution; no production
+workflow is activated by these changes.
