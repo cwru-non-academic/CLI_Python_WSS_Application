@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 12822b0567c918daa04bf486afca951adde9fca0
+          ref: 9d879f6d7725a8c6f44a6069055ec00caf4bbe69
           path: baseline-tools
           persist-credentials: false
       - name: Validate baseline content contracts (synthetic, not runtime acceptance)
