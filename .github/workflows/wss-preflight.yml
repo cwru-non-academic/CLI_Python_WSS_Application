@@ -13,9 +13,40 @@ concurrency:
   group: python-preflight-cli-${{ inputs.correlation_id }}
   cancel-in-progress: false
 jobs:
+  tooling:
+    name: Bind reviewed Python preflight tooling
+    runs-on: ubuntu-latest
+    outputs:
+      tools_sha: ${{ steps.binding.outputs.tools_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: cwru-non-academic/Python_WSS_Integration_Lib
+          ref: ec953112b92ce28ba043ef1d221bbda2059b7714
+          path: tools
+          persist-credentials: false
+      - name: Verify caller-owned immutable tooling pin
+        id: binding
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:GITHUB_REPOSITORY -cne 'cwru-non-academic/CLI_Python_WSS_Application' -or $env:GITHUB_EVENT_NAME -cne 'workflow_dispatch' -or $env:GITHUB_REF -cnotin @('refs/heads/dev','refs/heads/main') -or $env:GITHUB_WORKFLOW_REF -cne "$env:GITHUB_REPOSITORY/.github/workflows/wss-preflight.yml@$env:GITHUB_REF" -or $env:GITHUB_WORKFLOW_SHA -cne $env:GITHUB_SHA){throw 'Unregistered CLI preflight caller.'}
+          if((& git -C source rev-parse HEAD).Trim() -cne $env:GITHUB_SHA -or $LASTEXITCODE -ne 0){throw 'CLI workflow source mismatch.'}
+          if(@(& git -C source status --porcelain --untracked-files=all --ignore-submodules=all).Count -or $LASTEXITCODE -ne 0){throw 'CLI workflow source must remain clean.'}
+          . ./source/.github/scripts/Read-OrdinaryPythonTooling.ps1
+          $sha=Get-OrdinaryPythonToolsSha "$env:GITHUB_WORKSPACE/source" $env:GITHUB_SHA
+          Assert-OrdinaryPythonToolsCheckout "$env:GITHUB_WORKSPACE/tools" $sha
+          "tools_sha=$sha" >> $env:GITHUB_OUTPUT
   validate:
-    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@66f6bcd6bf0b92305da7c8c8d68b3fe239b9960b
+    needs: tooling
+    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@ec953112b92ce28ba043ef1d221bbda2059b7714
     with:
+      tools_sha: ${{ needs.tooling.outputs.tools_sha }}
       role: cli
       mode: candidate
       wrapper_sha: ${{ inputs.wrapper_sha }}
@@ -36,7 +67,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 66f6bcd6bf0b92305da7c8c8d68b3fe239b9960b
+          ref: ec953112b92ce28ba043ef1d221bbda2059b7714
           path: tools
           persist-credentials: false
       - uses: actions/download-artifact@v4

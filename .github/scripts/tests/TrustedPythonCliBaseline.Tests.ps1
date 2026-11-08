@@ -106,12 +106,16 @@ $mockContract=@'
 function Assert-PythonSource([string]$Root,[string]$Sha,[switch]$IgnoreSubmodule){
     $global:CliBaselinePlumbing.sources+=,@($Root,$Sha)
 }
-function Read-PythonConfig([string]$Path){[pscustomobject]@{fixture_commit=('c'*40)}}
+function Read-PythonConfig([string]$Path){
+    $global:CliBaselinePlumbing.configReads+=,$Path
+    Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+}
 function Assert-PythonCandidate($Candidate){}
 function Assert-PythonCliBaselineContent {$global:CliBaselinePlumbing.validated++}
 function Invoke-CredentialFreeSelectedPowerShell([string]$Runner,[hashtable]$Options){
     $global:CliBaselinePlumbing.children++
     $global:CliBaselinePlumbing.options=$Options.Clone()
+    $global:CliBaselinePlumbing.runner=$Runner
     $global:CliBaselinePlumbing.optionalLocks=$env:GIT_OPTIONAL_LOCKS
     if($Options.Stage -cne 'all' -or $Options.Role -cne 'cli'){throw 'Wrong baseline child stage/role.'}
     if($Options.ContainsKey('WorkflowSourceRoot') -or $Options.ContainsKey('WorkflowSourceSha')){throw 'Authority leaked into execution options.'}
@@ -135,6 +139,7 @@ function Get-WssUniversalFiles($Contract){@('synthetic.txt')}
 function Get-WssUniversalArchiveHashes {param($Archive,$ExpectedSha256,$ExpectedFiles)}
 '@
 Write-PlumbingFile (Join-Path $mockTools '.github/scripts/PythonContract.ps1') $mockContract
+Write-PlumbingFile (Join-Path $mockTools '.github/python-ci.json') ('{"fixture_commit":"'+('e'*40)+'"}')
 Write-PlumbingFile (Join-Path $mockTools '.github/scripts/PythonProfiles/Contract.ps1') '# Synthetic nonloading candidate-mode fixture.'
 Write-PlumbingFile (Join-Path $mockTools '.github/scripts/wss-ci/Assert-UniversalArchive.ps1') '# Archive shape is outside these plumbing tests.'
 $mockToolsSha=Commit-PlumbingRepo $mockTools
@@ -151,14 +156,14 @@ Write-PlumbingFile (Join-Path $product '.github/workflows/cli-ci.yml') ($workflo
 $productSha=Commit-PlumbingRepo $product
 if((Get-OrdinaryPythonToolsSha $product $productSha) -ceq $mockToolsSha){throw 'Fixture must distinguish historical product from current workflow authority.'}
 $mockWrapper=Join-Path $plumbing 'wrapper'
-Write-PlumbingFile (Join-Path $mockWrapper '.github/python-ci.json') '{}'
+Write-PlumbingFile (Join-Path $mockWrapper '.github/python-ci.json') ('{"fixture_commit":"'+('c'*40)+'"}')
 Write-PlumbingFile (Join-Path $mockWrapper 'conformance/synthetic.txt') 'nonloading fixture'
 $mockFixture=Join-Path $plumbing 'fixture';$mockArtifact=Join-Path $plumbing 'artifact'
 $null=New-Item -ItemType Directory -Path $mockFixture,$mockArtifact
 $mockCandidate=Join-Path $plumbing 'candidate.json'
 Write-PlumbingFile $mockCandidate '{}'
 function Reset-PlumbingState {
-    $global:CliBaselinePlumbing=@{children=0;selected=0;validated=0;sources=@();options=$null;baselineMutation='';selectedMutation=''}
+    $global:CliBaselinePlumbing=@{children=0;selected=0;validated=0;sources=@();configReads=@();options=$null;runner='';baselineMutation='';selectedMutation=''}
 }
 function Invoke-PlumbingCase([string]$Name,[hashtable]$Overrides=@{},[switch]$Ordinary){
     $options=@{ToolsRoot=$mockTools;WrapperRoot=$mockWrapper;WrapperSha=('b'*40);CliRoot=$product;CliSha=$productSha;
@@ -186,6 +191,16 @@ if($result.tools_sha -cne $mockToolsSha -or $result.workflow_source_sha -cne $au
    $global:CliBaselinePlumbing.children -ne 1 -or $global:CliBaselinePlumbing.validated -ne 1 -or
    $global:CliBaselinePlumbing.options.CliRoot -cne $product -or $global:CliBaselinePlumbing.options.CliSha -cne $productSha){throw 'Separate authority/product plumbing mismatch.'}
 Write-Host 'PASS: baseline plumbing separate authority and product'
+$child=$global:CliBaselinePlumbing.options
+if($child.ToolsRoot -cne $mockTools -or $child.ToolsSha -cne $mockToolsSha -or
+   $child.ConfigPath -cne (Join-Path $mockTools '.github/python-ci.json') -or
+   $child.WrapperRoot -cne $mockWrapper -or $child.WrapperSha -cne ('b'*40) -or
+   $child.FixtureRoot -cne $mockFixture -or $child.ArtifactRoot -cne $mockArtifact -or $child.CandidatePath -cne $mockCandidate -or
+   $global:CliBaselinePlumbing.runner -cne (Join-Path $mockTools '.github/scripts/Invoke-DotNetConformance.ps1')){throw 'Candidate child lost its separate tooling/product/resolver tuple.'}
+$fixtureReads=@($global:CliBaselinePlumbing.sources | Where-Object {$_[0] -ceq $mockFixture})
+if($fixtureReads.Count -ne 1 -or $fixtureReads[0][1] -cne ('c'*40) -or
+   @($global:CliBaselinePlumbing.configReads | Where-Object {$_ -ceq (Join-Path $mockWrapper '.github/python-ci.json')}).Count -ne 1){throw 'Candidate fixture authority moved from product to tooling.'}
+Write-Host 'PASS: candidate emitted tooling tuple retains independent product and fixture authority'
 Reset-PlumbingState
 $result=Invoke-PlumbingCase 'ordinary' @{CliRoot=$authority;CliSha=$authoritySha} -Ordinary
 if($result.workflow_source_sha -cne $authoritySha -or $global:CliBaselinePlumbing.children -ne 1){throw 'Ordinary default authority failed.'}
