@@ -73,17 +73,27 @@ def _default_cs_lib_dir(repo_root: Path) -> Path:
 
 
 def _print_command_help() -> None:
-    print("Commands:")
-    print("  help                Show this help text.")
-    print("  start               Broadcast StartStim.")
-    print("  stop                Broadcast StopStim.")
-    print("  stim <finger> <v>   Stim with model/params layer (normalized magnitude).")
-    print("  analog <finger> <pw> [amp] [ipi]  Send direct analog request.")
-    print("  reload-core         Reload the core config JSON.")
-    print("  reload-params [p]   Reload params JSON (optionally from path).")
-    print("  save-params         Persist params JSON.")
-    print("  status              Print Ready/Started/mode state.")
-    print("  quit|exit           Terminate the program.")
+    print('Commands at the > prompt (<...> required; [...] optional):')
+    print('  help                 Show this command reference.')
+    print('  status               Query Ready/Started/ModeValid/BasicSupported.')
+    print('  start                Request broadcast start for configured devices.')
+    print('  stop                 Request broadcast stop (not channel-specific).')
+    print('  stim <finger|chN> <magnitude>  Apply active model and channel parameters.')
+    print('    Intended input: finite 0.0..1.0, not mA. Example: stim ch1 1.0')
+    print('  analog <finger|chN> <pw> [amp] [ipi]  Direct values; bypass model/params.')
+    print('    Integers: pw in us, amp in mA domain (default 3), ipi in ms (default 10).')
+    print('    Example: analog ch1 50 1 10. Omitted amp/ipi: analog ch1 50')
+    print('  reload-core          Reload active Core JSON through host reset; retain model/params.')
+    print('  reload-params [path]  Reload all default JSONs, a directory profile, or one params file.')
+    print('    An explicit params file uses startup-default Core/model files, not siblings.')
+    print('  save-params          Write active params JSON to its current host file.')
+    print('  quit|exit            Leave the console and clean up the controller.')
+    print('Aliases: thumb=ch1, index=ch2, middle=ch3, ring=ch4, pinky/little=ch5.')
+    print('Use channels available in your configuration. Setup is asynchronous.')
+    print('Examples are for simulation with --test and a disposable config copy.')
+    print('Values depend on firmware/calibration; requests do not prove physical output.')
+    print('See README Interactive commands for input limits, paths and examples.')
+    print('Reload paths cannot contain spaces; quoting is not supported.')
 
 
 def _run_interactive_loop(controller: StimulationController, config: WssConfig | None = None) -> None:
