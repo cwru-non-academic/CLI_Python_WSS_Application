@@ -65,7 +65,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 97adf18118ad696395e1c42a29e6c94ff49116fd
+          ref: f208019cbba171442644037f59e039dcc1936d2c
           path: promotion-tools
           token: ${{ steps.read.outputs.token }}
           persist-credentials: false
