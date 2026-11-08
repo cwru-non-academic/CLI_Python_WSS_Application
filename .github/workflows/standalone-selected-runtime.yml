@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 9d879f6d7725a8c6f44a6069055ec00caf4bbe69
+          ref: 81d09460319baaee5bbacaed8effc915d2ac7dc2
           path: tools
           persist-credentials: false
       - name: Verify exact public producer archive with default read token
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 9d879f6d7725a8c6f44a6069055ec00caf4bbe69
+          ref: 81d09460319baaee5bbacaed8effc915d2ac7dc2
           path: tools
           persist-credentials: false
       - uses: actions/checkout@v4
