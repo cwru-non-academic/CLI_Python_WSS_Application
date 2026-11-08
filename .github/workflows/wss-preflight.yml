@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: ae75d94ef038275b704b089c7920803f69ce1889
+          ref: a222fd8aec1d0bc927d8584f0875ba5a6aca42ad
           path: tools
           persist-credentials: false
       - name: Verify caller-owned immutable tooling pin
@@ -44,7 +44,7 @@ jobs:
           "tools_sha=$sha" >> $env:GITHUB_OUTPUT
   validate:
     needs: tooling
-    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@ae75d94ef038275b704b089c7920803f69ce1889
+    uses: cwru-non-academic/Python_WSS_Integration_Lib/.github/workflows/_python-validation.yml@a222fd8aec1d0bc927d8584f0875ba5a6aca42ad
     with:
       tools_sha: ${{ needs.tooling.outputs.tools_sha }}
       role: cli
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: ae75d94ef038275b704b089c7920803f69ce1889
+          ref: a222fd8aec1d0bc927d8584f0875ba5a6aca42ad
           path: tools
           persist-credentials: false
       - uses: actions/download-artifact@v4
