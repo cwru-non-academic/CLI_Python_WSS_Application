@@ -272,21 +272,38 @@ fails; file absence alone never establishes legacy capability.
 
 ## CI and dependency maintenance
 
-### Canonical conformance and platform checks
+### Profile-based conformance and platform checks
 
-[CLI CI](.github/workflows/cli-ci.yml) resolves the exact
-`external/wss-py-wrapper` gitlink and runs the pinned ten-case fixture through
-`wss_cli.main.create_controller`, the production application factory. Python
-commands, ticking and Core emulator behavior execute through pythonnet. The
-canonical fixture keeps its historical CSharp case names and eighteen assertions.
-Terminal parsing and interactive I/O are outside that suite.
+[CLI CI](.github/workflows/cli-ci.yml) resolves the current CLI source, the exact
+`external/wss-py-wrapper` gitlink and immutable reviewed tooling. The shared
+production-wrapper harness selects conformance from the committed capability
+profile. The modern layered profile requires both single- and multi-device
+scenarios; a legitimate legacy profile retains its own canonical fixture.
+Neither profile selection nor a historical fixture result substitutes for
+validation of the actual source and payload under test.
+
+Ordinary CI also exercises the current CLI's transport options and mocked
+interactive reload routing. For the modern layered profile, additional real
+reload-boundary tests run through the CLI command loop with the committed
+wrapper and Core payload. Those tests cover scripted command input, not a
+human-operated terminal or physical stimulation. The workflow explicitly marks
+these modern reload tests as not applicable to a legitimate legacy profile;
+that is not modern reload acceptance.
+
+The separate [standalone proof](.github/standalone-selected-runtime.md) retains
+an explicitly frozen historical CLI/wrapper/test tuple and a supplementary
+canonical command suite. Its result is not current-head ordinary CI or campaign
+acceptance and does not replace the required profile or platform checks.
 
 [WSS CLI preflight](.github/workflows/wss-preflight.yml) delegates candidate
 validation to the integration's reusable workflow. Committed CI derives the
 wrapper revision from the gitlink; candidate validation requires exact wrapper
 and CLI source revisions and the verified Core producer/artifact/archive tuple.
-Candidate mode cannot fall back to committed DLLs. Evidence records ten actual
-passes, source identities, payload/XML/log hashes, Python 3.12 and pythonnet 3.0.5.
+Candidate validation requires the modern single- and multi-device suites;
+ordinary legacy compatibility is not candidate acceptance. Candidate mode cannot
+fall back to committed DLLs. Evidence binds the required profile results, source
+identities and payload/XML/log hashes to the tested inputs; the workflow and
+reviewed tooling define the execution contract.
 
 The acceptance checks are:
 
@@ -339,9 +356,9 @@ downstream targets, including MATLAB. Receipt verification creates no dependency
 PRs, merges or releases.
 
 The validator retains v2 approval, source-scope, archive checksum, strict
-25/27-file projection, canonical ten-case/eighteen-assertion, platform and ROS
-native checks. Applications must also prove their actual human-merged parent
-and fresh merged-wrapper preflight. Original proof sources must match the frozen
+25/27-file projection, the required canonical single-/multi-device suites,
+platform and ROS native checks. Applications must also prove their actual
+human-merged parent and fresh merged-wrapper preflight. Original proof sources must match the frozen
 target snapshot. Receipt code, normal CI and scripts must have the frozen Git
 identities. Latest actual-merge push/dispatch CI must pass; synthetic PR checkout
 CI cannot replace it. Core independently rechecks receipts, branches, identities,

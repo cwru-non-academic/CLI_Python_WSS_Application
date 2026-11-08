@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: d213bfcc4ac5d5ac2a404df56770215e3368c37f
           path: tools
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: d213bfcc4ac5d5ac2a404df56770215e3368c37f
           path: tools
           persist-credentials: false
       - name: Verify CLI transport options before any controller startup
@@ -152,6 +152,39 @@ jobs:
           $options.ToolsSha=Get-OrdinaryPythonToolsSha "$env:GITHUB_WORKSPACE/cli" $env:CLI_SHA
           Assert-OrdinaryPythonToolsCheckout $options.ToolsRoot $options.ToolsSha
           ./tools/.github/scripts/Invoke-DotNetConformance.ps1 @options
+      - name: Run additional interactive CLI reload boundaries
+        shell: pwsh
+        env:
+          WRAPPER_SHA: ${{ needs.prerequisites.outputs.wrapper }}
+          CLI_SHA: ${{ needs.prerequisites.outputs.cli }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./cli/.github/scripts/tests/ReloadBoundaryWorkflow.Tests.ps1
+          $app = "$env:GITHUB_WORKSPACE/cli"
+          $tools = "$env:GITHUB_WORKSPACE/tools"
+          $wrapper = "$env:GITHUB_WORKSPACE/wrapper"
+          . ./cli/.github/scripts/Read-OrdinaryPythonTooling.ps1
+          $toolSha = Get-OrdinaryPythonToolsSha $app $env:CLI_SHA
+          Assert-OrdinaryPythonToolsCheckout $tools $toolSha
+          . ./tools/.github/scripts/PythonContract.ps1
+          . ./tools/.github/scripts/PythonProfiles/Tooling.ps1
+          $binding = Resolve-PythonOrdinaryTooling -ToolsRoot $tools -ToolsSha $toolSha -ConfigPath "$tools/.github/python-ci.json" -WrapperRoot $wrapper -WrapperSha $env:WRAPPER_SHA
+          $log = "$env:RUNNER_TEMP/conformance-results/cli-reload-boundaries.log"
+          switch -CaseSensitive ($binding.profile.profile) {
+            'legacy-v1' {
+              'Not applicable: legitimate legacy profile; this is not modern reload acceptance.' | Tee-Object $log
+            }
+            'layered-v1' {
+              $env:PYTHONPATH = "$wrapper/src" + [IO.Path]::PathSeparator + "$app/src"
+              $env:PYTHONNET_RUNTIME = 'coreclr'
+              $env:WSS_TEST_PAYLOAD = Join-Path $wrapper $PythonPluginPath
+              python -B -m unittest discover -s cli/conformance -p test_command_reload_boundary.py -v 2>&1 | Tee-Object $log
+              if ($LASTEXITCODE -ne 0) { throw 'Additional CLI reload boundaries failed.' }
+              $text = Get-Content $log -Raw
+              if ($text -cnotmatch '(?m)^Ran 4 tests in ' -or $text -cnotmatch '(?m)^OK\s*$' -or $text -match 'skipped=') { throw 'Missing/skipped reload boundary tests.' }
+            }
+            default { throw 'Unknown reload capability profile.' }
+          }
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -225,7 +258,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: d213bfcc4ac5d5ac2a404df56770215e3368c37f
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
@@ -315,7 +348,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: d213bfcc4ac5d5ac2a404df56770215e3368c37f
           path: tools
           persist-credentials: false
       - name: Build and install wheels, check Python runtime and shared platform loading
@@ -376,7 +409,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a
+          ref: d213bfcc4ac5d5ac2a404df56770215e3368c37f
           path: tools
           persist-credentials: false
       - uses: actions/download-artifact@v4

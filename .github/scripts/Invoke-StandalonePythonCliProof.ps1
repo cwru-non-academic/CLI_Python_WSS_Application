@@ -5,6 +5,12 @@ param([Parameter(Mandatory)][string]$Workspace,[Parameter(Mandatory)][string]$Ve
       [Parameter(Mandatory)][string]$ExpectedCandidateHash,[Parameter(Mandatory)][string]$ExpectedArchiveContract)
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/TrustedPythonCliBaseline.ps1"
+$workflowSourceRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+$workflowSourceSha=$env:GITHUB_SHA
+Assert-PythonCliWorkflowSource $workflowSourceRoot
+# GITHUB_SHA is the executing workflow checkout (the merge commit for a PR),
+# never the frozen product or the pull request head.
+$toolsSha=Get-OrdinaryPythonToolsSha $workflowSourceRoot $workflowSourceSha
 $cliSha='628647e111c4b9976d28ff97e537abed0b8b0200'
 $testSha='76680d8c0698f1a028fa214d95bd8dc6d9098bc6'
 $wrapperSha='9c375d7d39b7fe212483112effcdcdd5b61cf381'
@@ -22,19 +28,24 @@ $candidate=Get-Content $candidatePath -Raw | ConvertFrom-Json
 if($candidate.repository -cne 'cwru-non-academic/WSSCore' -or $candidate.commit -cne '0bc9e2d0af507ee729d39d3a30ab005cc136eabf' -or
    [string]$candidate.run_id -cne '42288988734' -or [string]$candidate.artifact_id -cne '13538204103' -or
    $candidate.archive -cne 'WSS-Universal-ci.zip' -or $candidate.sha256 -cne $archiveHash){throw 'Immutable candidate tuple mismatch.'}
-$toolsSha=Get-OrdinaryPythonToolsSha $cli $cliSha
 Assert-OrdinaryPythonToolsCheckout $tools $toolsSha
+Assert-BaselineRegularPath $tools
+if(Test-Path -LiteralPath $OutputRoot){throw 'Standalone proof requires fresh output.'}
+$output=[IO.Path]::GetFullPath($OutputRoot)
+foreach($source in @($workflowSourceRoot,$VerifiedRoot,$tools,$cli,$wrapper,$tests,$fixture)){
+    $source=[IO.Path]::GetFullPath($source)
+    if($output -eq $source -or $output.StartsWith($source+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($output+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Standalone output must not overlap any immutable source/input.'}
+}
+# Include the entire parent checkout, ordinary workflow, and .git, not only scripts.
+$authority=New-TrustedBaselineSnapshot @($workflowSourceRoot,$VerifiedRoot)
 . "$tools/.github/scripts/PythonContract.ps1"
 . "$tools/.github/scripts/wss-ci/Assert-UniversalArchive.ps1"
 if($ExpectedArchiveContract -cne 'macos-ble-v1'){throw 'Unexpected authenticated producer archive contract.'}
 $contract=$ExpectedArchiveContract
 $null=Get-WssUniversalArchiveHashes -Archive $archive -ExpectedSha256 $archiveHash -ExpectedFiles @(Get-WssUniversalFiles $contract)
-if(Test-Path $OutputRoot){throw 'Standalone proof requires fresh output.'}
 New-Item -ItemType Directory $OutputRoot | Out-Null
 Expand-Archive -LiteralPath $archive -DestinationPath "$OutputRoot/input"
-# Freeze parent code and verified producer inputs before any execution.
-$authority=New-TrustedBaselineSnapshot @($PSScriptRoot,$VerifiedRoot)
-$baseline=Invoke-TrustedPythonCliBaseline -ToolsRoot $tools -WrapperRoot $wrapper -WrapperSha $wrapperSha -CliRoot $cli -CliSha $cliSha -OutputRoot "$OutputRoot/baseline" -Mode candidate -FixtureRoot $fixture -ArtifactRoot "$OutputRoot/input/WSS-Universal" -CandidatePath $candidatePath
+$baseline=Invoke-TrustedPythonCliBaseline -ToolsRoot $tools -WrapperRoot $wrapper -WrapperSha $wrapperSha -CliRoot $cli -CliSha $cliSha -WorkflowSourceRoot $workflowSourceRoot -WorkflowSourceSha $workflowSourceSha -OutputRoot "$OutputRoot/baseline" -Mode candidate -FixtureRoot $fixture -ArtifactRoot "$OutputRoot/input/WSS-Universal" -CandidatePath $candidatePath
 Assert-TrustedBaselineSnapshot $authority
 $protected=New-TrustedBaselineSnapshot @($baseline.root,$baseline.payload_root,$tools,$cli,$wrapper)
 $evidence="$OutputRoot/selected/test-source-evidence.json"
@@ -48,4 +59,4 @@ Assert-TrustedBaselineSnapshot $authority
 Assert-TrustedBaselineSnapshot $protected
 $result=Get-Content $evidence -Raw | ConvertFrom-Json
 if($result.tests_run -ne 10 -or $result.passed -cne $true){throw 'Required selected CLI10 did not pass.'}
-@{schema='standalone-python-cli-proof/v1';scope='Windows candidate-source only; not Core campaign acceptance';baseline_single=16;baseline_multi=16;selected=10;parent_recheck=$true;cli=$cliSha;tests=$testSha;wrapper=$wrapperSha;tools=$toolsSha;candidate=$candidate} | ConvertTo-Json -Depth 8 | Set-Content "$OutputRoot/standalone-result.json"
+@{schema='standalone-python-cli-proof/v1';scope='Windows candidate-source only; not Core campaign acceptance';baseline_single=16;baseline_multi=16;selected=10;parent_recheck=$true;cli=$cliSha;tests=$testSha;wrapper=$wrapperSha;tools=$toolsSha;workflow_source_sha=$workflowSourceSha;candidate=$candidate} | ConvertTo-Json -Depth 8 | Set-Content "$OutputRoot/standalone-result.json"

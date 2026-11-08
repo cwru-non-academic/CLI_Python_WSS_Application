@@ -110,8 +110,8 @@ class StandaloneSourceTupleTests(unittest.TestCase):
         self.assertIn("$wrapperSha='9c375d7d39b7fe212483112effcdcdd5b61cf381'",runner)
         self.assertIn("'--test-sha',$testSha",runner)
         self.assertNotIn("'--test-sha',$cliSha",runner)
-        self.assertEqual(workflow.count('ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a'),2)
-        self.assertIn('Get-OrdinaryPythonToolsSha $cli $cliSha',runner)
+        # Exact standalone tooling inventory/pin mutations are covered by OrdinaryPythonTooling.Tests.ps1.
+        self.assertIn('Get-OrdinaryPythonToolsSha $workflowSourceRoot $workflowSourceSha',runner)
         self.assertIn('Assert-OrdinaryPythonToolsCheckout $tools $toolsSha',runner)
 
     def test_separate_frozen_product_test_and_tool_sources(self):
@@ -124,8 +124,7 @@ class StandaloneSourceTupleTests(unittest.TestCase):
             (workflow.replace('CLI_SOURCE: 628647e111c4b9976d28ff97e537abed0b8b0200','CLI_SOURCE: 76680d8c0698f1a028fa214d95bd8dc6d9098bc6'),runner),
             (workflow,runner.replace("'--test-sha',$testSha","'--test-sha',$cliSha")),
             (workflow,runner.replace('Assert-OrdinaryPythonToolsCheckout $tools $toolsSha','# omitted')) ,
-            (workflow,runner.replace('Get-OrdinaryPythonToolsSha $cli $cliSha',"'1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a'")),
-            (workflow.replace('ref: 1f3d691d2a5ecbd7aaaf46b1deb8955acd078d3a','ref: dev'),runner)]:
+            (workflow,runner.replace('Get-OrdinaryPythonToolsSha $workflowSourceRoot $workflowSourceSha',"'untrusted-pin'"))]:
             with self.assertRaises(AssertionError): self.validate(bad_workflow,bad_runner)
 
 if __name__=='__main__': unittest.main()
