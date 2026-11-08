@@ -81,6 +81,155 @@ connect, or validate physical stimulation. Default serial auto-selection still
 requires a real serial port inventory; the safe construction check uses an
 explicit diagnostic port.
 
+## Interactive commands
+
+Enter these commands at the application's `>` prompt after startup; they are
+separate from startup options such as `--test`. Command names and finger/channel
+aliases are case-insensitive. In the syntax below, `<...>` is required and
+`[...]` is optional; do not type the brackets.
+
+| Command | What it does and inputs | Example at the prompt |
+| --- | --- | --- |
+| `help` | Show interactive command syntax, units and defaults. | `help` |
+| `status` | Query controller state and available API support. See the state explanation below. | `status` |
+| `start` | Request a broadcast start for the configured devices; takes no channel or magnitude. | `start` |
+| `stop` | Request a broadcast stop; takes no channel argument. | `stop` |
+| `stim <finger\|chN> <magnitude>` | Update one logical channel using the active model and stimulation parameters. Intended magnitude input is a finite number from `0.0` to `1.0`. | `stim ch1 1.0` |
+| `analog <finger\|chN> <pw> [amp] [ipi]` | Update one channel directly, bypassing model/parameter mapping. Pulse width is in microseconds, amplitude is in the mA domain (mapped to device scale), and inter-pulse interval is in milliseconds. Use integers; omitted `amp` is `3`, omitted `ipi` is `10`. | `analog ch1 50 1 10` |
+| `reload-core` | Reload the active `stimConfig.json` through the host reset path, retaining current calibration/model values. Reconstructs Core, including receiver addressing. | `reload-core` |
+| `reload-params [path]` | Reload all three startup-default JSON files. A directory selects all three standard filenames. An explicit file overrides the calibration path only; Core/model files are reread from startup defaults. | `reload-params ./Config/stimParams.json` |
+| `save-params` | Write active stimulation parameters to their current JSON file. This is host-side persistence, not a device configuration save. | `save-params` |
+| `quit` or `exit` | Leave the console and clean up the controller. | `quit` |
+
+### Channels, values and state
+
+`chN` selects a 1-based logical channel. Finger aliases map to `thumb` = `ch1`,
+`index` = `ch2`, `middle` = `ch3`, `ring` = `ch4`, and `pinky`/`little` = `ch5`.
+Use a channel available in your configuration; recognizing a name does not make
+that channel available. For example, a one-device configuration has three
+logical channels, so `ring` and `pinky` are outside its range.
+
+`stim ch1 1.0` supplies normalized input **1.0**, not 1 mA. The active P/PD model
+and per-channel `stimParams.json` settings determine the resulting pulse width
+and amplitude. `stim thumb 0.25` supplies 0.25 to the same channel. The intended
+input interval is `0.0` through `1.0`; this is not a claim that the command parser
+rejects every value outside that interval. Model mapping can change the output,
+so even input `0` is not a substitute for the broadcast `stop` command.
+
+`analog ch1 50` uses pulse width 50, amplitude 3 and IPI 10. To choose an IPI,
+supply the amplitude too: `analog ch1 50 1 20`. These are syntax examples, not
+recommended settings for a person or device. Direct analog values do not use
+the normalized calibration mapping. The CLI does not impose a universal
+calibrated operating range; use settings appropriate to your firmware, device
+and calibration. A successfully parsed request does not establish valid physical
+output. Stimulation commands update runtime values; `save-params` does not turn
+an analog request into new calibration settings.
+
+Setup continues asynchronously. `Ready` describes the Core state in which a
+start can be accepted, while `Started` describes started/streaming state;
+`Ready` need not remain true while streaming. `ModeValid` reports model-mode
+support, and `BasicSupported` reports availability of the optional Basic API.
+These flags and printed request messages do not prove physical stimulation.
+Python also prints the resolved configuration directory and Core log path with `status`.
+
+### Parsing and paths
+
+Magnitude uses Python floating-point syntax (for example, `1.0`). Analog
+arguments use integer syntax (`50`, not `50.0`); invalid numeric text prints
+`Command failed`. Missing required `stim`/`analog` arguments print usage. Extra
+arguments are ignored by the current handlers; use the documented argument count.
+The handlers do not explicitly reject non-finite floating-point magnitude text.
+
+Interactive input is split on whitespace. `reload-params` accepts a single path
+token: quotes do **not** enable spaces in paths. For example, use
+`reload-params C:/WSS/Config/stimParams.json`; select a location without spaces.
+
+For default, directory and explicit-file selection, reconstruction and retained
+values, see [Coordinated configuration reload](#coordinated-configuration-reload).
+
+### Practice without hardware
+
+After installing the app, create a temporary copy of `Config` and start
+the simulated transport. For example, from the repository root in PowerShell:
+
+```powershell
+$practiceConfig = Join-Path ([System.IO.Path]::GetTempPath()) ("wss-practice-" + [guid]::NewGuid())
+Copy-Item -LiteralPath ./Config -Destination $practiceConfig -Recurse
+wss-cli --test --config "$practiceConfig" --log-file (Join-Path $practiceConfig 'practice.log')
+```
+
+`--conformance` runs finite diagnostics and exits; it does not open this prompt.
+
+In that simulated session, try these commands one at a time. Inspect `status`
+and let setup progress before requesting a start. After `start`, wait for
+`Started` before the stimulation examples. These commands demonstrate syntax;
+the configured model and parameters still control the simulated values.
+
+```text
+help
+status
+start
+status
+stim ch1 1.0
+stim thumb 0.25
+analog ch1 50 1 10
+stop
+reload-core
+reload-params
+save-params
+quit
+```
+
+The copy isolates configuration writes, not just the log file. Serial/BLE startup
+selects live transports; keep `--test` for this exercise. A simulated session
+does not validate physical communication or output.
+
+## Coordinated configuration reload
+
+These commands use the coordinated reload support in the wrapper pinned by this
+DEV checkout. Older checkouts and MAIN must be checked against their own wrapper
+source and Core payload; updating Core alone does not add the host reset behavior.
+
+Enter `reload-core`, `reload-params [path]`, or `save-params` at the interactive
+prompt. Do not type the brackets. The commands call `LoadCoreConfigFile()`,
+`LoadParamsJson()` / `LoadParamsJson(path)`, and `SaveParamsJson()` respectively.
+
+- `reload-params` rereads all three startup-default files: `stimConfig.json`,
+  `stimParams.json`, and `modelConfig.json`. It returns to those defaults even
+  after selecting another profile.
+- `reload-params ./Config/profile` selects all three standard filenames in that
+  directory.
+- `reload-params ./Config/customParams.json` selects that calibration file with
+  the startup-default Core and model files, **not sibling files** next to the
+  selected calibration file. All three JSON files are still read and validated.
+- `reload-core` reads the active Core file, retains currently applied in-memory
+  calibration/model values and paths (including unsaved edits), and reconstructs
+  Core through the host reset path, including its receiver address map. It
+  reconstructs even if Core values are unchanged. Before initialization this
+  Core reset is a no-op.
+- `save-params` writes active stimulation parameters to the selected calibration
+  file. It does not save device configuration or persist the Core/model files.
+
+The startup defaults come from the application's resolved configuration directory
+(`Config/` in the app repository unless overridden at startup). Startup paths
+remain anchored even if the process working directory changes. Relative explicit
+reload paths are resolved against the process working directory.
+
+Reload stages and validates files before changing the active stack. Any effective
+Core configuration change uses the existing reset path: stop ticking, dispose the
+old stack (Core zeros output and disconnects), construct the validated replacement,
+and resume initialization/ticking. Unchanged Core permits calibration/model
+updates without reconnecting. A reset does not replay previous stimulation values.
+`reload-core` retains applied calibration/model values; `reload-params` rereads them.
+Use `status` to check asynchronous setup and wait for `Started` before sending new
+stimulation commands after reconstruction. A printed reload message does not
+establish device readiness or physical output.
+
+Invalid JSON leaves the active stack unchanged. Cleanup or construction failure
+can leave the controller unavailable; inspect the reported error rather than
+assuming the replacement is ready. Use a disposable configuration copy with the
+simulated transport when practicing reloads or `save-params`.
+
 ## Notes
 
 - The CLI imports `WssConfig` and `StimulationController` from `wss_py_wrapper`.
@@ -99,8 +248,9 @@ these template changes do not rewrite existing user configuration. Core keeps
 its existing normalization behavior for invalid address values.
 Keep the firmware and calibration values appropriate to your hardware.
 
-After changing receiver addresses, stop and restart the application so Core
-constructs a new address map. The CLI `reload-core` command does not rebuild that map.
+After changing receiver addresses, use `reload-core` to reconstruct Core with
+the new address map, or stop and restart the application. The coordinated reload
+contract above applies to this DEV checkout's pinned wrapper.
 Setup continues asynchronously after controller initialization. An initialized
 application or an advancing tick loop does not establish that a device is ready.
 Core setup and tick errors are recorded in the configured log file; check the
@@ -122,21 +272,38 @@ fails; file absence alone never establishes legacy capability.
 
 ## CI and dependency maintenance
 
-### Canonical conformance and platform checks
+### Profile-based conformance and platform checks
 
-[CLI CI](.github/workflows/cli-ci.yml) resolves the exact
-`external/wss-py-wrapper` gitlink and runs the pinned ten-case fixture through
-`wss_cli.main.create_controller`, the production application factory. Python
-commands, ticking and Core emulator behavior execute through pythonnet. The
-canonical fixture keeps its historical CSharp case names and eighteen assertions.
-Terminal parsing and interactive I/O are outside that suite.
+[CLI CI](.github/workflows/cli-ci.yml) resolves the current CLI source, the exact
+`external/wss-py-wrapper` gitlink and immutable reviewed tooling. The shared
+production-wrapper harness selects conformance from the committed capability
+profile. The modern layered profile requires both single- and multi-device
+scenarios; a legitimate legacy profile retains its own canonical fixture.
+Neither profile selection nor a historical fixture result substitutes for
+validation of the actual source and payload under test.
+
+Ordinary CI also exercises the current CLI's transport options and mocked
+interactive reload routing. For the modern layered profile, additional real
+reload-boundary tests run through the CLI command loop with the committed
+wrapper and Core payload. Those tests cover scripted command input, not a
+human-operated terminal or physical stimulation. The workflow explicitly marks
+these modern reload tests as not applicable to a legitimate legacy profile;
+that is not modern reload acceptance.
+
+The separate [standalone proof](.github/standalone-selected-runtime.md) retains
+an explicitly frozen historical CLI/wrapper/test tuple and a supplementary
+canonical command suite. Its result is not current-head ordinary CI or campaign
+acceptance and does not replace the required profile or platform checks.
 
 [WSS CLI preflight](.github/workflows/wss-preflight.yml) delegates candidate
 validation to the integration's reusable workflow. Committed CI derives the
 wrapper revision from the gitlink; candidate validation requires exact wrapper
 and CLI source revisions and the verified Core producer/artifact/archive tuple.
-Candidate mode cannot fall back to committed DLLs. Evidence records ten actual
-passes, source identities, payload/XML/log hashes, Python 3.12 and pythonnet 3.0.5.
+Candidate validation requires the modern single- and multi-device suites;
+ordinary legacy compatibility is not candidate acceptance. Candidate mode cannot
+fall back to committed DLLs. Evidence binds the required profile results, source
+identities and payload/XML/log hashes to the tested inputs; the workflow and
+reviewed tooling define the execution contract.
 
 The acceptance checks are:
 
@@ -189,9 +356,9 @@ downstream targets, including MATLAB. Receipt verification creates no dependency
 PRs, merges or releases.
 
 The validator retains v2 approval, source-scope, archive checksum, strict
-25/27-file projection, canonical ten-case/eighteen-assertion, platform and ROS
-native checks. Applications must also prove their actual human-merged parent
-and fresh merged-wrapper preflight. Original proof sources must match the frozen
+25/27-file projection, the required canonical single-/multi-device suites,
+platform and ROS native checks. Applications must also prove their actual
+human-merged parent and fresh merged-wrapper preflight. Original proof sources must match the frozen
 target snapshot. Receipt code, normal CI and scripts must have the frozen Git
 identities. Latest actual-merge push/dispatch CI must pass; synthetic PR checkout
 CI cannot replace it. Core independently rechecks receipts, branches, identities,
