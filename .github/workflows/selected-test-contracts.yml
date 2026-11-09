@@ -37,9 +37,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cwru-non-academic/Python_WSS_Integration_Lib
-          ref: b672962cdd874d3b1b95d31f10464554e3dc05aa
+          ref: 06aaf46fceccb4456e02a267a76a472639539b48
+          fetch-depth: 0
           path: baseline-tools
           persist-credentials: false
       - name: Validate baseline content contracts (synthetic, not runtime acceptance)
         shell: pwsh
         run: ./.github/scripts/tests/TrustedPythonCliBaseline.Tests.ps1 -ToolsRoot ./baseline-tools
+      - name: Install pinned workflow parser
+        run: python -m pip install PyYAML==6.0.3
+      - name: Validate candidate workflow tooling authority
+        shell: pwsh
+        run: |
+          ./.github/scripts/tests/CandidateToolingWorkflow.Tests.ps1 -ToolsRoot ./baseline-tools
+          ./baseline-tools/.github/scripts/tests/Test-PythonReusableTooling.ps1
+          ./baseline-tools/.github/scripts/tests/Test-PythonCandidateTooling.ps1 -CliRoot $env:GITHUB_WORKSPACE
