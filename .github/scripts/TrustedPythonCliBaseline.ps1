@@ -106,6 +106,7 @@ function Invoke-TrustedPythonCliBaseline {
         Assert-PythonCandidate $candidate
         Assert-PythonSource $FixtureRoot $config.fixture_commit
         $options.FixtureRoot=$FixtureRoot;$options.ArtifactRoot=$ArtifactRoot;$options.CandidatePath=$CandidatePath
+        $options.ToolsRoot=$ToolsRoot;$options.ToolsSha=$toolsSha;$options.ConfigPath=Join-Path $ToolsRoot '.github/python-ci.json'
         $runner=Join-Path $ToolsRoot '.github/scripts/Invoke-DotNetConformance.ps1'
         $payload=Join-Path $OutputRoot 'projection'
     }else{
