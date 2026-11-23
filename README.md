@@ -10,41 +10,97 @@ The reusable wrapper library lives in the [Python_WSS_Integration_Lib](https://g
 - `Config/`: app-owned runtime configuration JSON files
 - `external/wss-py-wrapper/`: reusable wrapper library submodule
 
-## Setup
+## First stimulation
 
-Clone the app repo and initialize the wrapper submodule:
+### Install the CLI
+
+Install Git, Python 3.12, and the .NET 9 runtime for the architecture of your Python process. The package declares Python 3.9 or later. Python 3.12 and .NET 9 are the platform-check baseline. Check `dotnet --list-runtimes` for `Microsoft.NETCore.App` 9.x.
 
 ```bash
-git clone --recursive git@github.com:cwru-non-academic/CLI_Python_WSS_Application.git
+git clone --recurse-submodules https://github.com/cwru-non-academic/CLI_Python_WSS_Application.git
 cd CLI_Python_WSS_Application
 ```
 
-Create a virtual environment and install the app repo:
+If the wrapper directory is empty, run `git submodule update --init --recursive` from the repo root. The editable install uses that pinned wrapper and the DLLs in `external/wss-py-wrapper/Cs_Libraries/`.
+
+On Linux or macOS, in Bash:
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install -U pip
 python -m pip install -e external/wss-py-wrapper
 python -m pip install -e .
+export PYTHONNET_RUNTIME=coreclr
+wss-cli --conformance
 ```
 
-The CLI can also import the wrapper directly from the checked-out submodule during editable app development, but installing the wrapper repo explicitly is the cleaner setup.
+On Windows, in PowerShell:
 
-## Runtime Assets
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e external/wss-py-wrapper
+.\.venv\Scripts\python.exe -m pip install -e .
+$env:PYTHONNET_RUNTIME = 'coreclr'
+.\.venv\Scripts\wss-cli.exe --conformance
+```
 
-- App-owned config location: `Config/` in this app repo
-- Wrapper-owned DLL location: `external/wss-py-wrapper/Cs_Libraries/`
+Conformance runs simulated initialization and direct-output checks and exits. Set `PYTHONNET_RUNTIME=coreclr` again if you open a fresh terminal. If CLR loading fails, check the runtime architecture and that the pinned DLL directory is populated.
 
-The CLI now constructs `WssConfig` explicitly from app-repo paths instead of relying on the old combined-repo current-working-directory layout.
+### Prepare the one-channel bench profile
 
-## Run
+Follow the [hardware overview](https://cwru-non-academic.github.io/WSS_Documentation/hardwareDocs/wsshardware.html) for the physical setup and the [bench verification handoff](https://github.com/cwru-non-academic/WSS_Documentation/blob/main/apiDocs/conceptual/start-here-using-an-application.md#bench-verification) for the approved profile and measurement procedure. Use a bench setup with no person connected.
+
+Copy the three `Config/*.json` files to a writable directory named `Config-bench` in the repo root and apply the bench profile to that copy. For one unit, check `maxWSS`, `firmware` and the first `wssTargets` entry in `stimConfig.json`. The shipped example uses H03 and `0x81`. It has example calibration on `ch1` and zeroed calibration on `ch2`/`ch3`. Use the approved `stimParams.json` for `ch1` and the corresponding `modelConfig.json`. Pass the copied directory with `--config`.
+
+From the repo root, before applying the approved profile, create the working
+copy for your shell:
 
 ```bash
-wss-cli --help
-wss-cli
-wss-cli --test
+mkdir -p Config-bench
+cp Config/*.json Config-bench/
 ```
+
+```powershell
+New-Item -ItemType Directory -Path .\Config-bench -Force | Out-Null
+Copy-Item .\Config\*.json .\Config-bench
+```
+
+Apply the approved settings in `Config-bench` before running a live command.
+
+### Connect by serial or BLE
+
+For serial, get the COM port from **Device Manager → Ports (COM & LPT)** on Windows or use the full `/dev/...` path on Linux or macOS. See [Linux serial dependencies and permissions](https://github.com/cwru-non-academic/WSSCore#linux-serial-setup) for Linux.
+
+```bash
+read -r -p 'WSS serial port: ' port
+wss-cli --transport serial --serial "$port" --config "$PWD/Config-bench"
+```
+
+```powershell
+$port = Read-Host 'WSS serial port'
+.\.venv\Scripts\wss-cli.exe --transport serial --serial $port --config "$PWD/Config-bench"
+```
+
+For BLE, enable Bluetooth and select the exact advertised name of the NUS device. On Windows, use `.\.venv\Scripts\wss-cli.exe` with the same flags and the PowerShell config path above. If names are shared, replace `--ble-device-name` with `--ble-device-id` and pass the local identifier.
+
+```bash
+read -r -p 'WSS BLE name: ' name
+wss-cli --transport ble --ble-device-name "$name" --config "$PWD/Config-bench"
+```
+
+### Send a command, verify output, and stop
+
+1. At the application's `>` prompt, run `status`. Setup is asynchronous. When `Started` is true, continue to the next step. If `Ready` is true and `Started` is false, run `start` and check `status` again until `Started` is true.
+2. Enter `stim ch1 <magnitude>`, replacing `<magnitude>` with the normalized input from your bench profile. Confirm output on the mapped channel using the bench procedure.
+3. Enter `stop` and verify output has ceased. Enter `quit` to exit.
+
+If the app never starts, check the selected device, port access, firmware and receiver address. If it starts but the bench measurement shows no output, check that the loaded calibration and model apply to the channel you are testing.
+
+Startup and `status` print the resolved configuration and Core log paths. For an interactive simulated run, see [Practice without hardware](#practice-without-hardware).
+
+## Run options
+
+Use `wss-cli --help` for launch options and `help` at the application's prompt for interactive commands.
 
 Useful options:
 
